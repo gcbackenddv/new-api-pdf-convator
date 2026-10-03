@@ -1,0 +1,62 @@
+@baseUrl = http://127.0.0.1:8000
+
+### Home
+GET {{baseUrl}}/
+
+### About
+GET {{baseUrl}}/about
+
+### List users
+GET {{baseUrl}}/users/
+
+### Search users by name
+GET {{baseUrl}}/users/search?name=Alice
+
+### Search users by email
+GET {{baseUrl}}/users/search?email=example.com
+
+### Filter users
+GET {{baseUrl}}/users/filter?gender=Male&age_min=20&age_max=35&city=Anytown&state=CA
+
+### Get user by ID
+GET {{baseUrl}}/users/1
+
+### Create user
+# @name createUser
+POST {{baseUrl}}/users/
+Content-Type: application/json
+
+{
+	"name": "Jordan Lee",
+	"email": "jordan.lee.{{$guid}}@example.com",
+	"age": 28,
+	"gender": "Non-binary",
+	"address": {
+		"street": "10 Maple St",
+		"city": "Anytown",
+		"state": "CA",
+		"zip": "90210"
+	}
+}
+
+### Update the user created above
+PUT {{baseUrl}}/users/{{createUser.response.body.$.id}}
+Content-Type: application/json
+
+{
+	"name": "Jordan Lee Updated"
+}
+
+### Delete the user created above
+DELETE {{baseUrl}}/users/{{createUser.response.body.$.id}}
+
+### Convert a PDF to HEIC files in a ZIP
+POST {{baseUrl}}/convert/pdf-to-heic
+Content-Type: multipart/form-data; boundary=----PdfUploadBoundary
+
+------PdfUploadBoundary
+Content-Disposition: form-data; name="file"; filename="new.pdf"
+Content-Type: application/pdf
+
+< C:/Users/Clipping World/Downloads/new.pdf
+------PdfUploadBoundary--
