@@ -1,5 +1,10 @@
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 from app.config import settings
 
 from app.routers import (
@@ -19,12 +24,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="User Management API",
+    title="File Conversion API",
     version="1.0.0",
     lifespan=lifespan
 )
-
-
 
 app.include_router(pdf_to_heic.router)
 app.include_router(pdf_to_long_image.router)
@@ -32,17 +35,18 @@ app.include_router(heic_to_pdf.router)
 app.include_router(pdf_to_pptx.router)
 app.include_router(pptx_to_pdf.router)
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 @app.get("/")
 def home():
-    return {
-        "message": "Hello, FastAPI!"
-    }
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/about")
 def about():
     return {
-        "message": "User Management API",
+        "message": "File Conversion API",
         "version": "1.0.0"
     }
