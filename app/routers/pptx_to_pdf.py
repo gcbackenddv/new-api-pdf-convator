@@ -29,9 +29,14 @@ def _safe_stem(raw: str) -> str:
 
 @router.get("/pptx-to-pdf/health", summary="Is the conversion engine available?")
 def pptx_to_pdf_health():
-    if find_soffice(settings.PPTX_PDF_SOFFICE_PATH) is None:
-        raise HTTPException(503, "The PowerPoint conversion engine is not available.")
-    return {"available": True}
+    soffice = find_soffice(settings.PPTX_PDF_SOFFICE_PATH)
+    if soffice is None:
+        raise HTTPException(
+            503,
+            "The PowerPoint conversion engine (LibreOffice) is not available. "
+            "Please install LibreOffice (e.g. 'sudo apt install libreoffice') or set PPTX_PDF_SOFFICE_PATH.",
+        )
+    return {"available": True, "soffice_path": str(soffice)}
 
 
 @router.post(

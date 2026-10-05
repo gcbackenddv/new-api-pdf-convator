@@ -57,15 +57,52 @@ def find_soffice(configured: str = "") -> Path | None:
     """Locate LibreOffice: configured path, then PATH, then standard install folders."""
     candidates: list[Path] = []
     if configured:
-        candidates.append(Path(configured))
+        cleaned = configured.strip().strip("'\"")
+        if cleaned:
+            p = Path(cleaned)
+            candidates.append(p)
+            # If configured path is a directory (e.g. /usr/lib/libreoffice or .../program)
+            if p.is_dir():
+                candidates.extend([
+                    p / "soffice",
+                    p / "soffice.exe",
+                    p / "program" / "soffice",
+                    p / "program" / "soffice.exe",
+                ])
+
     for name in ("soffice", "soffice.exe", "libreoffice"):
         found = shutil.which(name)
         if found:
             candidates.append(Path(found))
+
+    # Windows standard paths
     for env in ("ProgramFiles", "ProgramFiles(x86)"):
         base = os.environ.get(env)
         if base:
             candidates.append(Path(base) / "LibreOffice" / "program" / "soffice.exe")
+
+    # Linux & macOS standard paths
+    standard_paths = [
+        "/usr/bin/libreoffice",
+        "/usr/bin/soffice",
+        "/usr/lib/libreoffice/program/soffice",
+        "/usr/local/bin/libreoffice",
+        "/usr/local/bin/soffice",
+        "/snap/bin/libreoffice",
+        "/var/lib/flatpak/exports/bin/org.libreoffice.LibreOffice",
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+    ]
+    for sp in standard_paths:
+        candidates.append(Path(sp))
+
+    # Check /opt/libreoffice*/program/soffice
+    opt_dir = Path("/opt")
+    if opt_dir.is_dir():
+        try:
+            candidates.extend(opt_dir.glob("libreoffice*/program/soffice"))
+        except OSError:
+            pass
+
     return next((p for p in candidates if p.is_file()), None)
 
 
@@ -217,8 +254,12 @@ def convert_presentation_to_pdf(
     )
     soffice = find_soffice(soffice_path)
     if soffice is None:
-        logger.error("[%s] LibreOffice not found; set PPTX_PDF_SOFFICE_PATH", job_id)
-        raise PptxToPdfError("The PowerPoint conversion engine is not available.", 503)
+        logger.error("[%s] LibreOffice not found; please install LibreOffice (e.g. 'sudo apt install libreoffice') or set PPTX_PDF_SOFFICE_PATH", job_id)
+        raise PptxToPdfError(
+            "The PowerPoint conversion engine (LibreOffice) is not installed or found on the server. "
+            "Please install LibreOffice or set PPTX_PDF_SOFFICE_PATH.",
+            503,
+        )
 
     profile_dir = work_dir / "lo-profile"  # isolated per job, so jobs never collide
     out_dir = work_dir / "out"
