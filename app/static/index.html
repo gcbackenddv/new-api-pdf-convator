@@ -47,7 +47,7 @@
           <p class="eyebrow">AVAILABLE ENDPOINTS</p>
           <h2>Choose an operation</h2>
         </div>
-        <span class="operation-count">06 CONVERSIONS</span>
+        <span class="operation-count">09 FILE OPERATIONS</span>
       </div>
 
       <article class="operation-card">
@@ -148,6 +148,100 @@
             <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable OCR</label>
           </div>
           <button class="send-button" type="submit">Try v1 endpoint <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Embedded images</h3>
+        <code class="endpoint">/api/v1/pdf/extract-images</code>
+        <form data-endpoint="/api/v1/pdf/extract-images" data-download="true">
+          <label class="field-label" for="extract-images-file">PDF file</label>
+          <input id="extract-images-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <div class="field-row">
+            <label class="field-label" for="extract-images-format">Output format
+              <select id="extract-images-format" name="output_format" data-form>
+                <option value="original">Keep original format</option>
+                <option value="jpg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+                <option value="heic">HEIC</option>
+              </select>
+            </label>
+          </div>
+          <p class="standalone-hint">Choose an output format before extracting. Uploading a PDF alone keeps each embedded image in its original format. Images download in a ZIP; pages are not exported as screenshots.</p>
+          <button class="send-button" type="submit">Extract images <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Flattened PDF</h3>
+        <code class="endpoint">/api/v1/pdf/flatten</code>
+        <form data-endpoint="/api/v1/pdf/flatten" data-download="true">
+          <label class="field-label" for="pdf-flatten-file">PDF file</label>
+          <input id="pdf-flatten-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <p class="standalone-hint">Makes supported form fields and annotations part of the page content without rasterizing pages. Signed PDFs are rejected because flattening invalidates their signatures.</p>
+          <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Extract tables</h3>
+        <code class="endpoint">/api/v1/pdf/extract-tables</code>
+        <form data-endpoint="/api/v1/pdf/extract-tables" data-download="true">
+          <label class="field-label" for="pdf-tables-file">PDF file</label>
+          <input id="pdf-tables-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <div class="field-row">
+            <label class="field-label" for="tables-output-format">Output format
+              <select id="tables-output-format" name="output_format" data-query>
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+                <option value="xlsx">Excel (XLSX)</option>
+                <option value="html">HTML</option>
+                <option value="markdown">Markdown</option>
+                <option value="image">Image</option>
+              </select>
+            </label>
+            <label class="field-label" for="tables-image-format">Image type
+              <select id="tables-image-format" name="image_format" data-query>
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field-label">First page<input name="page_start" type="number" min="1" value="1" data-query></label>
+            <label class="field-label">Last page<input name="page_end" type="number" min="1" placeholder="Last page" data-query></label>
+            <label class="field-label">Table number(s)<input name="table_index" type="text" value="all" placeholder="all or 1,3" data-query></label>
+          </div>
+          <div class="field-row">
+            <label class="field-label">OCR
+              <select name="ocr" data-query>
+                <option value="auto">Automatic</option>
+                <option value="true">Always</option>
+                <option value="false">Never</option>
+              </select>
+            </label>
+            <label class="field-label">Merge tables
+              <select name="merge_tables" data-query>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+          </div>
+          <p class="standalone-hint">Scanned pages can be OCR'd automatically. JSON is shown in the response panel; other formats download as a file or ZIP.</p>
+          <button class="send-button" type="submit">Extract tables <span aria-hidden="true">→</span></button>
         </form>
       </article>
 
