@@ -60,3 +60,16 @@ Content-Type: application/pdf
 
 < C:/Users/Clipping World/Downloads/new.pdf
 ------PdfUploadBoundary--
+
+### Flatten a PDF
+# Expected: 200 application/pdf with X-Flatten-Form-Fields and X-Flatten-Annotations headers.
+# Replace the file path below with a PDF available on your machine.
+POST {{baseUrl}}/api/v1/pdf/flatten
+Content-Type: multipart/form-data; boundary=----PdfFlattenBoundary
+
+------PdfFlattenBoundary
+Content-Disposition: form-data; name="file"; filename="new.pdf"
+Content-Type: application/pdf
+
+< C:/Users/Clipping World/Downloads/new.pdf
+------PdfFlattenBoundary--
