@@ -12,7 +12,10 @@ from app.routers import (
     pdf_to_long_image,
     heic_to_pdf,
     pdf_to_pptx,
-    pptx_to_pdf
+    pptx_to_pdf,
+    pdf_extract_images,
+    pdf_flatten,
+    pdf_extract_tables,
 )
 from app.services.pptx_to_pdf import cleanup_stale_dirs
 
@@ -34,6 +37,10 @@ app.include_router(pdf_to_long_image.router)
 app.include_router(heic_to_pdf.router)
 app.include_router(pdf_to_pptx.router)
 app.include_router(pptx_to_pdf.router)
+app.include_router(pdf_extract_images.router)
+app.include_router(pdf_flatten.router)
+app.include_router(pdf_extract_tables.router)
+
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
