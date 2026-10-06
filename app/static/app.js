@@ -9,13 +9,13 @@ function showResponse(status, message, body, kind = "") {
   responseBody.textContent = body;
 }
 
-function filenameFromResponse(response) {
+function filenameFromResponse(response, fallback = "download") {
   const disposition = response.headers.get("content-disposition") || "";
-  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const encoded = disposition.match(/filename\*=(?:UTF-8|utf-8)''([^;]+)/i);
   const plain = disposition.match(/filename="?([^";]+)"?/i);
   if (encoded) return decodeURIComponent(encoded[1]);
   if (plain) return plain[1];
-  return "download";
+  return fallback;
 }
 
 async function sendRequest(url, options = {}, download = false) {
@@ -29,31 +29,74 @@ async function sendRequest(url, options = {}, download = false) {
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = filenameFromResponse(response);
+      const flattenFormFields = response.headers.get("x-flatten-form-fields");
+      const flattenAnnotations = response.headers.get("x-flatten-annotations");
+      const signatureInvalidated = response.headers.get("x-signature-invalidated") === "true";
+      const extractedImageCount = response.headers.get("x-extracted-image-count");
+      const outputFormat = response.headers.get("x-output-format");
+      const tableCount = response.headers.get("x-table-count");
+      const extractionWarnings = response.headers.get("x-extraction-warnings");
+      const ocrPages = response.headers.get("x-ocr-pages");
+      const formatSuffix = outputFormat && outputFormat !== "original" ? `-${outputFormat}` : "";
+      const defaultName = flattenFormFields !== null
+        ? "flattened-document.pdf"
+        : extractedImageCount !== null
+          ? `extracted-images${formatSuffix}.zip`
+          : tableCount !== null
+            ? "extracted-tables"
+          : "download";
+      link.download = filenameFromResponse(response, defaultName);
       document.body.append(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      const flattenMessage = flattenFormFields === null
+        ? null
+        : signatureInvalidated
+          ? "Flattened PDF downloaded. Its digital signature was invalidated."
+          : `Flattened PDF downloaded. Found ${flattenFormFields} form field${flattenFormFields === "1" ? "" : "s"} and ${flattenAnnotations || "0"} annotation${flattenAnnotations === "1" ? "" : "s"}.`;
+      const tableMessage = tableCount === null
+        ? null
+        : `Extracted ${tableCount} table${tableCount === "1" ? "" : "s"}${extractionWarnings && extractionWarnings !== "0" ? ` with ${extractionWarnings} warning${extractionWarnings === "1" ? "" : "s"}` : ""}${ocrPages ? `. OCR used on page${ocrPages.includes(",") ? "s" : ""} ${ocrPages}` : ""}. Your download has started.`;
+      const downloadMessage = flattenMessage
+        || tableMessage
+        || (extractedImageCount === null
+          ? "Conversion complete. Your file download has started."
+          : `Extracted ${extractedImageCount} embedded image${extractedImageCount === "1" ? "" : "s"}${outputFormat ? ` as ${outputFormat}` : ""}. Your download has started.`);
+      const tableDetails = tableCount === null
+        ? ""
+        : `\nTables extracted: ${tableCount}\nWarnings: ${extractionWarnings || "0"}\nOCR pages: ${ocrPages || "none"}`;
       showResponse(
         `${response.status} ${response.statusText}`,
-        "Conversion complete. Your file download has started.",
-        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).`
+        downloadMessage,
+        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).${flattenFormFields === null ? "" : `\nForm fields found: ${flattenFormFields}\nAnnotations found: ${flattenAnnotations || "0"}\nSignature invalidated: ${signatureInvalidated ? "yes" : "no"}.`}${tableDetails}`
       );
       return;
     }
 
     const responseText = await response.text();
     let body = responseText;
+    let message = response.ok ? "Request completed successfully." : "The API returned an error.";
+    const tableCount = response.headers.get("x-table-count");
+    const extractionWarnings = response.headers.get("x-extraction-warnings");
+    const ocrPages = response.headers.get("x-ocr-pages");
+    if (response.ok && tableCount !== null) {
+      message = `Extracted ${tableCount} table${tableCount === "1" ? "" : "s"}${extractionWarnings && extractionWarnings !== "0" ? ` with ${extractionWarnings} warning${extractionWarnings === "1" ? "" : "s"}` : ""}${ocrPages ? `. OCR used on page${ocrPages.includes(",") ? "s" : ""} ${ocrPages}` : ""}.`;
+    }
     if (contentType.includes("json")) {
       try {
-        body = JSON.stringify(JSON.parse(responseText), null, 2);
+        const parsed = JSON.parse(responseText);
+        body = JSON.stringify(parsed, null, 2);
+        if (!response.ok && typeof parsed.detail === "string") {
+          message = parsed.detail;
+        }
       } catch {
         body = responseText || "The API returned an empty response.";
       }
     }
     showResponse(
       `${response.status} ${response.statusText}`,
-      response.ok ? "Request completed successfully." : "The API returned an error.",
+      message,
       body,
       response.ok ? "" : "error"
     );
@@ -103,6 +146,9 @@ document.querySelectorAll("form[data-endpoint]").forEach((form) => {
     const body = new FormData();
     form.querySelectorAll('input[type="file"]').forEach((input) => {
       Array.from(input.files || []).forEach((file) => body.append(input.name, file));
+    });
+    form.querySelectorAll("[data-form]").forEach((field) => {
+      body.append(field.name, field.type === "checkbox" ? String(field.checked) : field.value);
     });
 
     const button = form.querySelector('button[type="submit"]');
