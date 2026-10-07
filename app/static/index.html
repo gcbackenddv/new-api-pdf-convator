@@ -33,7 +33,7 @@
       <div id="pdf-preview-files" class="pdf-preview-files" role="group" aria-label="PDF files to preview" hidden></div>
       <div class="deskew-preview-heading" hidden>
         <span>PAGE ROTATION</span>
-        <span>Move a slider to rotate that page</span>
+        <span>Set each page from −180° to +180°</span>
       </div>
       <div class="deskew-pages" id="deskew-pages" aria-live="polite" hidden></div>
       <div id="enhance-preview" class="enhance-preview" aria-live="polite" hidden>
@@ -280,7 +280,7 @@
             </select>
           </label>
           <input id="deskew-angles" name="manual_angles" type="hidden" data-form>
-          <p class="standalone-hint">Automatic mode detects skew. Moving any page slider switches to manual mode and rotates only that page; other pages stay at 0°.</p>
+          <p class="standalone-hint">Automatic mode corrects small skew. Use each preview slider for manual page rotation from −180° to +180°; changing a slider switches to manual mode.</p>
           <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
         </form>
       </article>
@@ -321,8 +321,10 @@
           <label class="field-label" for="searchable-file">PDF file</label>
           <input id="searchable-file" name="file" type="file" accept=".pdf,application/pdf" required>
           <div class="field-row">
-            <label class="field-label">OCR language(s) <span class="field-hint">Optional, e.g. eng+ben</span><input name="lang" type="text" placeholder="Server default" data-query></label>
-            <label class="field-label field-checkbox"><input name="force_ocr" type="checkbox" data-query> Force OCR on all pages</label>
+            <label class="field-label">OCR language(s) <span class="field-hint">e.g. auto, eng, eng+ben</span><input name="lang" type="text" placeholder="auto (auto-detect)" data-query></label>
+            <label class="field-label field-checkbox"><input name="force_ocr" type="checkbox" data-query> Force OCR</label>
+            <label class="field-label field-checkbox"><input name="deskew" type="checkbox" data-query> Deskew</label>
+            <label class="field-label field-checkbox"><input name="auto_rotate" type="checkbox" data-query> Auto-rotate</label>
           </div>
           <button class="send-button" type="submit">Make searchable <span aria-hidden="true">→</span></button>
         </form>
