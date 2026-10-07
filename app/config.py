@@ -200,6 +200,7 @@ class Settings:
         self.OCR_MAX_PAGES: int = _env_int("OCR_MAX_PAGES", 30)
         self.OCR_MAX_PIXELS: int = _env_int("OCR_MAX_PIXELS", 40_000_000)
         self.OCR_MIN_WORDS: int = _env_int("OCR_MIN_WORDS", 5)
+        self.OCR_FONT_PATH: str = _env("OCR_FONT_PATH", "")
 
         # ------------------------------------------------------------------
         # Searchable PDF / make-searchable
