@@ -89,6 +89,10 @@ h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .field-hint { margin-left: 4px; color: #888; font-size: 10px; }
 .file-selection { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .file-selection.has-files { color: #444; }
+.deskew-pages { display: grid; gap: 12px; margin-top: 12px; }
+.deskew-page { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: #f8f8f8; }
+.deskew-page h4 { margin: 0 0 8px; font-size: 12px; }
+.deskew-page-preview { display: block; width: min(100%, 280px); height: 250px; margin: 0 auto 8px; object-fit: contain; transform-origin: center; }
 
 input[type="file"] {
   width: 100%;
@@ -127,6 +131,7 @@ input[type="file"]::file-selector-button {
 .field-row input:focus, .field-row select:focus, input[type="file"]:focus { border-color: #999; }
 .field-checkbox { display: flex; min-height: 30px; align-items: center; gap: 6px; }
 .field-checkbox input { accent-color: #555; }
+input[type="range"] { width: 100%; accent-color: #333; }
 
 .send-button {
   min-height: 31px;

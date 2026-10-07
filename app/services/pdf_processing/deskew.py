@@ -32,9 +32,9 @@ def detect_skew(img: Image.Image, *, max_angle: float = 15.0) -> Tuple[float, fl
     if lines is None or len(lines) < 3:
         return 0.0, 0.0
 
+    segments = np.asarray(lines).reshape(-1, 4)
     angles = []
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
+    for x1, y1, x2, y2 in segments:
         if x2 == x1:
             continue
         angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))

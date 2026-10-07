@@ -129,6 +129,90 @@ heicFilesInput.addEventListener("change", () => {
   heicSelection.textContent = `${files.length} image${files.length === 1 ? "" : "s"} selected: ${names}`;
 });
 
+const deskewForm = document.querySelector('form[data-endpoint="/api/v1/pdf/deskew"]');
+const deskewFileInput = deskewForm.querySelector("#deskew-file");
+const deskewPages = deskewForm.querySelector("#deskew-pages");
+const deskewAnglesInput = deskewForm.querySelector("#deskew-angles");
+const deskewMode = deskewForm.querySelector("#deskew-mode");
+const deskewSubmitButton = deskewForm.querySelector('button[type="submit"]');
+let deskewSliders = [];
+
+function updateDeskewMode() {
+  const isManual = deskewMode.value === "manual";
+  deskewSliders.forEach((slider) => { slider.disabled = !isManual; });
+  deskewAnglesInput.disabled = !isManual;
+}
+
+deskewFileInput.addEventListener("change", async () => {
+  const file = deskewFileInput.files?.[0];
+  deskewPages.replaceChildren();
+  deskewAnglesInput.value = "";
+  deskewSliders = [];
+  updateDeskewMode();
+  if (!file) {
+    return;
+  }
+
+  deskewSubmitButton.disabled = true;
+  deskewPages.textContent = "Loading page previews…";
+  const previewBody = new FormData();
+  previewBody.append("file", file);
+  try {
+    const response = await fetch("/api/v1/pdf/deskew/preview", {
+      method: "POST",
+      body: previewBody,
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not preview this PDF.");
+    }
+
+    const angles = payload.pages.map(() => 0);
+    const fragment = document.createDocumentFragment();
+    payload.pages.forEach(({ page, preview }, index) => {
+      const card = document.createElement("section");
+      card.className = "deskew-page";
+      const heading = document.createElement("h4");
+      heading.textContent = `Page ${page}`;
+      const image = document.createElement("img");
+      image.alt = `Preview of page ${page}`;
+      image.src = `data:image/jpeg;base64,${preview}`;
+      image.className = "deskew-page-preview";
+      const label = document.createElement("label");
+      label.className = "field-label";
+      const output = document.createElement("output");
+      output.textContent = "0.0°";
+      label.append(`Clockwise angle: `, output);
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = "-15";
+      slider.max = "15";
+      slider.step = "0.1";
+      slider.value = "0";
+      slider.disabled = deskewMode.value !== "manual";
+      slider.setAttribute("aria-label", `Rotation angle for page ${page}`);
+      slider.addEventListener("input", () => {
+        angles[index] = Number(slider.value);
+        output.textContent = `${angles[index].toFixed(1)}°`;
+        image.style.transform = `rotate(${angles[index]}deg)`;
+        deskewAnglesInput.value = JSON.stringify(angles);
+      });
+      label.append(slider);
+      deskewSliders.push(slider);
+      card.append(heading, image, label);
+      fragment.append(card);
+    });
+    deskewAnglesInput.value = JSON.stringify(angles);
+    deskewPages.replaceChildren(fragment);
+  } catch (error) {
+    deskewPages.textContent = error instanceof Error ? error.message : String(error);
+  } finally {
+    deskewSubmitButton.disabled = false;
+  }
+});
+deskewMode.addEventListener("change", updateDeskewMode);
+updateDeskewMode();
+
 document.querySelectorAll("form[data-endpoint]").forEach((form) => {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -148,6 +232,9 @@ document.querySelectorAll("form[data-endpoint]").forEach((form) => {
       Array.from(input.files || []).forEach((file) => body.append(input.name, file));
     });
     form.querySelectorAll("[data-form]").forEach((field) => {
+      if (field.disabled) {
+        return;
+      }
       body.append(field.name, field.type === "checkbox" ? String(field.checked) : field.value);
     });
 

@@ -240,7 +240,15 @@
         <form data-endpoint="/api/v1/pdf/deskew" data-download="true">
           <label class="field-label" for="deskew-file">PDF file</label>
           <input id="deskew-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <p class="standalone-hint">Automatically straightens skewed pages in the uploaded PDF.</p>
+          <label class="field-label" for="deskew-mode">Deskew method
+            <select id="deskew-mode" name="deskew_mode">
+              <option value="auto">Automatic</option>
+              <option value="manual">Manual per page</option>
+            </select>
+          </label>
+          <div class="deskew-pages" id="deskew-pages" aria-live="polite"></div>
+          <input id="deskew-angles" name="manual_angles" type="hidden" data-form>
+          <p class="standalone-hint">Choose a PDF to preview every page. Automatic mode detects skew; manual mode lets you set a separate clockwise rotation for each page. Pages left at 0° will not be rotated.</p>
           <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
         </form>
       </article>

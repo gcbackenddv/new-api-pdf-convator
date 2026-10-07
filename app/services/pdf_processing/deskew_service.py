@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 import pymupdf as fitz
-from PIL import Image
 
 from app.config import get_settings
 from .deskew import detect_skew, deskew_image
@@ -15,7 +14,14 @@ from .validator import validate_pdf
 logger = logging.getLogger(__name__)
 
 
-def deskew_pdf(src: Path, dst: Path, *, min_confidence: float = 0.4) -> dict:
+def deskew_pdf(
+    src: Path,
+    dst: Path,
+    *,
+    min_confidence: float = 0.4,
+    manual_angle: float | None = None,
+    manual_angles: list[float] | None = None,
+) -> dict:
     validate_pdf(src)
     settings = get_settings()
     src_doc = fitz.open(src)
@@ -26,11 +32,18 @@ def deskew_pdf(src: Path, dst: Path, *, min_confidence: float = 0.4) -> dict:
         for i in range(src_doc.page_count):
             page = src_doc[i]
             img = render_page_to_image(src_doc, i, dpi=min(120, settings.MAX_RENDER_DPI))
-            angle, conf = detect_skew(img)
-            if conf >= min_confidence and abs(angle) > 0.3:
-                img = deskew_image(img, angle)
-                corrected += 1
-                logger.debug("Page %d deskewed by %.2f° (conf=%.2f)", i + 1, angle, conf)
+            page_angle = manual_angles[i] if manual_angles is not None else manual_angle
+            if page_angle is not None:
+                if abs(page_angle) > 0.1:
+                    img = deskew_image(img, page_angle)
+                    corrected += 1
+                    logger.debug("Page %d manually deskewed by %.2f°", i + 1, page_angle)
+            else:
+                angle, conf = detect_skew(img)
+                if conf >= min_confidence and abs(angle) > 0.3:
+                    img = deskew_image(img, angle)
+                    corrected += 1
+                    logger.debug("Page %d deskewed by %.2f° (conf=%.2f)", i + 1, angle, conf)
 
             # Insert as full-page image (preserves visual; loses vector)
             # For mixed vector+scan docs a more sophisticated approach is needed.
