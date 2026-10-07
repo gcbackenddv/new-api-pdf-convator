@@ -60,7 +60,7 @@ def test_manual_deskew_angle_bypasses_detection_and_is_applied(tmp_path, monkeyp
     monkeypatch.setattr(
         deskew_service,
         "deskew_image",
-        lambda image, angle: rotations.append(angle) or image,
+        lambda image, angle, **_kwargs: rotations.append(angle) or image,
     )
 
     result = deskew_service.deskew_pdf(source, destination, manual_angle=2.5)
@@ -93,7 +93,7 @@ def test_manual_deskew_angles_are_applied_to_their_pages(tmp_path, monkeypatch):
     monkeypatch.setattr(
         deskew_service,
         "deskew_image",
-        lambda image, angle: rotations.append(angle) or image,
+        lambda image, angle, **_kwargs: rotations.append(angle) or image,
     )
 
     result = deskew_service.deskew_pdf(
@@ -175,12 +175,50 @@ def test_deskew_endpoint_accepts_separate_angles_per_page(tmp_path, monkeypatch)
 
     response = client.post(
         "/api/v1/pdf/deskew",
-        data={"manual_angles": "[1.5, -2.0]"},
+        data={"manual_angles": "[-180, 180]"},
         files={"file": ("sample.pdf", pdf_bytes, "application/pdf")},
     )
 
     assert response.status_code == 200, response.text
-    assert received_angles == [[1.5, -2.0]]
+    assert received_angles == [[-180.0, 180.0]]
+
+
+def test_manual_angles_reject_values_outside_full_rotation_range(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+    document = pymupdf.open()
+    document.new_page()
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    response = client.post(
+        "/api/v1/pdf/deskew",
+        data={"manual_angles": "[180.1]"},
+        files={"file": ("sample.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 422
+    assert "between -180 and 180" in response.json()["detail"]
+
+
+def test_manual_90_degree_rotation_expands_pdf_page_without_clipping(tmp_path, monkeypatch):
+    source = tmp_path / "source.pdf"
+    destination = tmp_path / "deskewed.pdf"
+    document = pymupdf.open()
+    document.new_page(width=100, height=200)
+    document.save(source)
+    document.close()
+
+    monkeypatch.setattr(
+        deskew_service,
+        "render_page_to_image",
+        lambda *_args, **_kwargs: Image.new("RGB", (100, 200), "white"),
+    )
+
+    deskew_service.deskew_pdf(source, destination, manual_angles=[90])
+
+    with pymupdf.open(destination) as rotated:
+        assert rotated[0].rect.width == pytest.approx(200)
+        assert rotated[0].rect.height == pytest.approx(100)
 
 
 def test_deskew_preview_returns_all_page_thumbnails(tmp_path, monkeypatch):
