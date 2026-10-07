@@ -118,6 +118,8 @@ def flatten_pdf_document(
     flatten_forms: bool = Form(True, description="Flatten interactive form fields into permanent page content"),
     flatten_annotations: bool = Form(True, description="Flatten general annotations (highlights, text, drawings)"),
     flatten_stamps: bool = Form(True, description="Flatten stamp annotations"),
+    full_flatten: bool = Form(False, description="Full PDF flatten: renders entire PDF into non-selectable, non-editable raster pages"),
+    dpi: int = Form(150, description="DPI resolution for full flatten rasterization (72-300)"),
     settings: FlattenSettings = Depends(get_flatten_settings),
 ) -> FileResponse:
     # A plain ``def`` endpoint: FastAPI runs it in the threadpool, which is
@@ -126,6 +128,8 @@ def flatten_pdf_document(
         flatten_forms=flatten_forms,
         flatten_annotations=flatten_annotations,
         flatten_stamps=flatten_stamps,
+        full_flatten=full_flatten,
+        dpi=dpi,
     )
     job: service.FlattenJob | None = None
     try:
