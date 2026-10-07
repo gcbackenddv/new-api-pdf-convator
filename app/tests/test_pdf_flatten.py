@@ -107,3 +107,46 @@ def test_flatten_endpoint_with_granular_options(tmp_path, monkeypatch):
     assert len(annots) >= 1
     flattened.close()
 
+
+def test_full_pdf_flatten_makes_text_non_selectable(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    document = pymupdf.open()
+    page = document.new_page(width=500, height=700)
+    page.insert_text((50, 100), "Sensitive Non-Selectable Data 12345", fontsize=14)
+
+    widget = pymupdf.Widget()
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.field_name = "account"
+    widget.field_value = "ACC-9988"
+    widget.rect = pymupdf.Rect(50, 150, 200, 180)
+    page.add_widget(widget)
+
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    response = client.post(
+        "/api/v1/pdf/flatten",
+        data={
+            "full_flatten": "true",
+            "dpi": "100",
+        },
+        files={"file": ("doc.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200, response.text
+    flattened = pymupdf.open(stream=response.content, filetype="pdf")
+    assert flattened.page_count == 1
+
+    # In full flatten mode, text is 100% rasterized: NO selectable text exists
+    text = flattened[0].get_text().strip()
+    assert text == ""
+
+    # No interactive widgets exist
+    assert len(list(flattened[0].widgets() or [])) == 0
+
+    # Image exists on page representing the rendered view
+    assert len(flattened[0].get_images()) >= 1
+    flattened.close()
+
+
