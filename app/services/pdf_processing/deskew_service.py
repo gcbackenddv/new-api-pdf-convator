@@ -32,12 +32,13 @@ def deskew_pdf(
         for i in range(src_doc.page_count):
             page = src_doc[i]
             img = render_page_to_image(src_doc, i, dpi=min(120, settings.MAX_RENDER_DPI))
+            original_size = img.size
             page_angle = manual_angles[i] if manual_angles is not None else manual_angle
             if page_angle is not None:
                 if abs(page_angle) > 0.1:
-                    img = deskew_image(img, page_angle)
+                    img = deskew_image(img, page_angle, expand=True)
                     corrected += 1
-                    logger.debug("Page %d manually deskewed by %.2f°", i + 1, page_angle)
+                    logger.debug("Page %d manually rotated by %.2f°", i + 1, page_angle)
             else:
                 angle, conf = detect_skew(img)
                 if conf >= min_confidence and abs(angle) > 0.3:
@@ -48,12 +49,14 @@ def deskew_pdf(
             # Insert as full-page image (preserves visual; loses vector)
             # For mixed vector+scan docs a more sophisticated approach is needed.
             rect = page.rect
-            new_page = out_doc.new_page(width=rect.width, height=rect.height)
+            page_width = rect.width * img.width / original_size[0]
+            page_height = rect.height * img.height / original_size[1]
+            new_page = out_doc.new_page(width=page_width, height=page_height)
             # Save temp image bytes
             import io
             buf = io.BytesIO()
             img.save(buf, format="JPEG", quality=90)
-            new_page.insert_image(rect, stream=buf.getvalue())
+            new_page.insert_image(new_page.rect, stream=buf.getvalue())
 
         out_doc.save(dst, garbage=4, deflate=True)
         return {"pages_total": src_doc.page_count, "pages_corrected": corrected}
