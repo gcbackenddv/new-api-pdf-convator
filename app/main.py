@@ -20,7 +20,9 @@ from app.routers import (
     pdf_compare,
     pdf_deskew,
     pdf_enhance,
-    pdf_searchable
+    pdf_searchable,
+    pdf_remove_blank_pages,
+    pdf_repair,
 )
 from app.services.pptx_to_pdf import cleanup_stale_dirs
 
@@ -50,6 +52,8 @@ app.include_router(pdf_compare.router)
 app.include_router(pdf_deskew.router)
 app.include_router(pdf_enhance.router)
 app.include_router(pdf_searchable.router)
+app.include_router(pdf_remove_blank_pages.router)
+app.include_router(pdf_repair.router)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
