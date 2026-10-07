@@ -87,3 +87,37 @@ PPTX_PDF_SOFFICE_PATH=/path/to/soffice
 
 3. Open `http://127.0.0.1:8000/` to use the interactive conversion tester.
 4. Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+
+---
+
+## Remove Blank Pages API
+
+### `POST /api/v1/pdf/remove-blank-pages`
+
+Automatically identifies and removes genuinely blank pages from both text-based and scanned PDFs. Preserves original page order, drawings, vector contents, and quality.
+
+- **Parameters**:
+  - `file`: PDF file (`multipart/form-data`)
+  - `threshold` *(optional query parameter, float 0.0 - 1.0)*: Custom blank detection sensitivity (defaults to `BLANK_PAGE_THRESHOLD=0.0005`).
+
+- **Response**: Downloadable cleaned PDF (`application/pdf`)
+- **Metadata Headers**:
+  - `X-Original-Pages`: Total page count in original PDF
+  - `X-Removed-Pages`: Number of blank pages removed
+  - `X-Remaining-Pages`: Count of pages retained
+  - `X-Removed-Page-Numbers`: JSON array of removed 1-indexed page numbers (e.g. `[2, 5]`)
+
+---
+
+## PDF Repair API
+
+### `POST /api/v1/pdf/repair`
+
+Recovers damaged, corrupted, or unreadable PDF files by rebuilding broken cross-reference (XREF) tables and object streams.
+
+- **Parameters**:
+  - `file`: Corrupted PDF file (`multipart/form-data`)
+- **Response**: Downloadable repaired PDF (`application/pdf`)
+- **Metadata Headers**:
+  - `X-PDF-Pages`: Total recovered page count
+  - `X-PDF-Repaired`: `true` if structural corruption was detected and repaired
