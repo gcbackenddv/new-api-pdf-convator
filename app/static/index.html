@@ -220,7 +220,12 @@
         <form data-endpoint="/api/v1/pdf/flatten" data-download="true">
           <label class="field-label" for="pdf-flatten-file">PDF file</label>
           <input id="pdf-flatten-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <p class="standalone-hint">Makes supported form fields and annotations part of the page content without rasterizing pages. Signed PDFs are rejected because flattening invalidates their signatures.</p>
+          <div class="field-row">
+            <label class="field-label field-checkbox"><input name="flatten_forms" type="checkbox" checked data-form> Flatten Form Fields</label>
+            <label class="field-label field-checkbox"><input name="flatten_annotations" type="checkbox" checked data-form> Flatten Annotations</label>
+            <label class="field-label field-checkbox"><input name="flatten_stamps" type="checkbox" checked data-form> Flatten Stamps</label>
+          </div>
+          <p class="standalone-hint">Permanently merges form fields, annotations, and stamps into the page appearance without rasterizing to images. Real text and vectors are preserved.</p>
           <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
         </form>
       </article>

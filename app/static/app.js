@@ -31,6 +31,7 @@ async function sendRequest(url, options = {}, download = false) {
       link.href = objectUrl;
       const flattenFormFields = response.headers.get("x-flatten-form-fields");
       const flattenAnnotations = response.headers.get("x-flatten-annotations");
+      const flattenStamps = response.headers.get("x-flatten-stamps");
       const signatureInvalidated = response.headers.get("x-signature-invalidated") === "true";
       const extractedImageCount = response.headers.get("x-extracted-image-count");
       const outputFormat = response.headers.get("x-output-format");
@@ -56,7 +57,7 @@ async function sendRequest(url, options = {}, download = false) {
         ? null
         : signatureInvalidated
           ? "Flattened PDF downloaded. Its digital signature was invalidated."
-          : `Flattened PDF downloaded. Found ${flattenFormFields} form field${flattenFormFields === "1" ? "" : "s"} and ${flattenAnnotations || "0"} annotation${flattenAnnotations === "1" ? "" : "s"}.`;
+          : `Flattened PDF downloaded. Found ${flattenFormFields} form field${flattenFormFields === "1" ? "" : "s"}, ${flattenAnnotations || "0"} annotation${flattenAnnotations === "1" ? "" : "s"}, and ${flattenStamps || "0"} stamp${flattenStamps === "1" ? "" : "s"}.`;
       const tableMessage = tableCount === null
         ? null
         : `Extracted ${tableCount} table${tableCount === "1" ? "" : "s"}${extractionWarnings && extractionWarnings !== "0" ? ` with ${extractionWarnings} warning${extractionWarnings === "1" ? "" : "s"}` : ""}${ocrPages ? `. OCR used on page${ocrPages.includes(",") ? "s" : ""} ${ocrPages}` : ""}. Your download has started.`;
