@@ -1,75 +1,328 @@
 @baseUrl = http://127.0.0.1:8000
 
-### Home
+# Set these paths to files available on your computer.
+# Paths are relative to this api.http file unless you use an absolute path.
+@pdfPath = ./samples/sample.pdf
+@originalPdfPath = ./samples/original.pdf
+@revisedPdfPath = ./samples/revised.pdf
+@pptxPath = ./samples/sample.pptx
+@heicPath1 = ./samples/page-1.heic
+@heicPath2 = ./samples/page-2.heic
+
+###############################################################################
+# Application
+###############################################################################
+
+### Home page
 GET {{baseUrl}}/
 
 ### About
 GET {{baseUrl}}/about
 
-### List users
-GET {{baseUrl}}/users/
+### OpenAPI schema
+GET {{baseUrl}}/openapi.json
 
-### Search users by name
-GET {{baseUrl}}/users/search?name=Alice
+### Swagger UI
+GET {{baseUrl}}/docs
 
-### Search users by email
-GET {{baseUrl}}/users/search?email=example.com
+###############################################################################
+# PDF conversion
+###############################################################################
 
-### Filter users
-GET {{baseUrl}}/users/filter?gender=Male&age_min=20&age_max=35&city=Anytown&state=CA
+### PDF to HEIC ZIP
+POST {{baseUrl}}/convert/pdf-to-heic?dpi=200&quality=90
+Content-Type: multipart/form-data; boundary=----PdfToHeicBoundary
 
-### Get user by ID
-GET {{baseUrl}}/users/1
-
-### Create user
-# @name createUser
-POST {{baseUrl}}/users/
-Content-Type: application/json
-
-{
-	"name": "Jordan Lee",
-	"email": "jordan.lee.{{$guid}}@example.com",
-	"age": 28,
-	"gender": "Non-binary",
-	"address": {
-		"street": "10 Maple St",
-		"city": "Anytown",
-		"state": "CA",
-		"zip": "90210"
-	}
-}
-
-### Update the user created above
-PUT {{baseUrl}}/users/{{createUser.response.body.$.id}}
-Content-Type: application/json
-
-{
-	"name": "Jordan Lee Updated"
-}
-
-### Delete the user created above
-DELETE {{baseUrl}}/users/{{createUser.response.body.$.id}}
-
-### Convert a PDF to HEIC files in a ZIP
-POST {{baseUrl}}/convert/pdf-to-heic
-Content-Type: multipart/form-data; boundary=----PdfUploadBoundary
-
-------PdfUploadBoundary
-Content-Disposition: form-data; name="file"; filename="new.pdf"
+------PdfToHeicBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
 Content-Type: application/pdf
 
-< C:/Users/Clipping World/Downloads/new.pdf
-------PdfUploadBoundary--
+< {{pdfPath}}
+------PdfToHeicBoundary--
 
-### Flatten a PDF
-# Expected: 200 application/pdf with X-Flatten-Form-Fields and X-Flatten-Annotations headers.
-# Replace the file path below with a PDF available on your machine.
+### PDF to one long image (PNG, JPG, or HEIC)
+POST {{baseUrl}}/convert/pdf-to-long-image?format=png&dpi=150&quality=90
+Content-Type: multipart/form-data; boundary=----PdfToLongImageBoundary
+
+------PdfToLongImageBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------PdfToLongImageBoundary--
+
+### One or more HEIC/HEIF images to PDF
+POST {{baseUrl}}/convert/heic-to-pdf?page_size=auto&sort=false&compression=jpeg&dpi=150&quality=90
+Content-Type: multipart/form-data; boundary=----HeicToPdfBoundary
+
+------HeicToPdfBoundary
+Content-Disposition: form-data; name="files"; filename="page-1.heic"
+Content-Type: image/heic
+
+< {{heicPath1}}
+------HeicToPdfBoundary
+Content-Disposition: form-data; name="files"; filename="page-2.heic"
+Content-Type: image/heic
+
+< {{heicPath2}}
+------HeicToPdfBoundary--
+
+### PDF to editable PowerPoint (primary route)
+POST {{baseUrl}}/convert/pdf-to-pptx?dpi=150&ocr=true
+Content-Type: multipart/form-data; boundary=----PdfToPptxBoundary
+
+------PdfToPptxBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------PdfToPptxBoundary--
+
+### PDF to editable PowerPoint (v1 alias)
+POST {{baseUrl}}/api/v1/pdf-to-pptx?dpi=150&ocr=true
+Content-Type: multipart/form-data; boundary=----PdfToPptxV1Boundary
+
+------PdfToPptxV1Boundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------PdfToPptxV1Boundary--
+
+### PowerPoint to PDF
+POST {{baseUrl}}/convert/pptx-to-pdf
+Content-Type: multipart/form-data; boundary=----PptxToPdfBoundary
+
+------PptxToPdfBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pptx"
+Content-Type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+
+< {{pptxPath}}
+------PptxToPdfBoundary--
+
+### Check PowerPoint conversion engine (requires LibreOffice on the server)
+GET {{baseUrl}}/convert/pptx-to-pdf/health
+
+###############################################################################
+# PDF utilities
+###############################################################################
+
+### Extract embedded images as ZIP (output_format is a multipart field)
+POST {{baseUrl}}/api/v1/pdf/extract-images
+Content-Type: multipart/form-data; boundary=----ExtractImagesBoundary
+
+------ExtractImagesBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------ExtractImagesBoundary
+Content-Disposition: form-data; name="output_format"
+
+original
+------ExtractImagesBoundary--
+
+### Flatten interactive PDF forms and annotations
+# Response headers include X-Flatten-Form-Fields and X-Flatten-Annotations.
 POST {{baseUrl}}/api/v1/pdf/flatten
-Content-Type: multipart/form-data; boundary=----PdfFlattenBoundary
+Content-Type: multipart/form-data; boundary=----FlattenPdfBoundary
 
-------PdfFlattenBoundary
-Content-Disposition: form-data; name="file"; filename="new.pdf"
+------FlattenPdfBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
 Content-Type: application/pdf
 
-< C:/Users/Clipping World/Downloads/new.pdf
-------PdfFlattenBoundary--
+< {{pdfPath}}
+------FlattenPdfBoundary--
+
+### Auto-rotate PDF pages
+POST {{baseUrl}}/api/v1/pdf/auto-rotate
+Content-Type: multipart/form-data; boundary=----AutoRotateBoundary
+
+------AutoRotateBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------AutoRotateBoundary--
+
+### Make PDF searchable with OCR
+# Install Tesseract and the requested language data on the server.
+POST {{baseUrl}}/api/v1/pdf/make-searchable?lang=eng&force_ocr=true
+Content-Type: multipart/form-data; boundary=----SearchablePdfBoundary
+
+------SearchablePdfBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------SearchablePdfBoundary--
+
+###############################################################################
+# Compare PDFs
+###############################################################################
+
+### Compare two PDFs and return a JSON summary (default)
+POST {{baseUrl}}/api/v1/compare-pdf
+Content-Type: multipart/form-data; boundary=----CompareJsonBoundary
+
+------CompareJsonBoundary
+Content-Disposition: form-data; name="original_pdf"; filename="original.pdf"
+Content-Type: application/pdf
+
+< {{originalPdfPath}}
+------CompareJsonBoundary
+Content-Disposition: form-data; name="new_pdf"; filename="revised.pdf"
+Content-Type: application/pdf
+
+< {{revisedPdfPath}}
+------CompareJsonBoundary--
+
+### Compare two PDFs and download an HTML report
+POST {{baseUrl}}/api/v1/compare-pdf?report_format=html
+Content-Type: multipart/form-data; boundary=----CompareHtmlBoundary
+
+------CompareHtmlBoundary
+Content-Disposition: form-data; name="original_pdf"; filename="original.pdf"
+Content-Type: application/pdf
+
+< {{originalPdfPath}}
+------CompareHtmlBoundary
+Content-Disposition: form-data; name="new_pdf"; filename="revised.pdf"
+Content-Type: application/pdf
+
+< {{revisedPdfPath}}
+------CompareHtmlBoundary--
+
+### Compare two PDFs and download a PDF report
+POST {{baseUrl}}/api/v1/compare-pdf?report_format=pdf
+Content-Type: multipart/form-data; boundary=----ComparePdfBoundary
+
+------ComparePdfBoundary
+Content-Disposition: form-data; name="original_pdf"; filename="original.pdf"
+Content-Type: application/pdf
+
+< {{originalPdfPath}}
+------ComparePdfBoundary
+Content-Disposition: form-data; name="new_pdf"; filename="revised.pdf"
+Content-Type: application/pdf
+
+< {{revisedPdfPath}}
+------ComparePdfBoundary--
+
+###############################################################################
+# Deskew PDF
+###############################################################################
+
+### Preview every PDF page for manual deskew (returns JSON with JPEG thumbnails)
+POST {{baseUrl}}/api/v1/pdf/deskew/preview
+Content-Type: multipart/form-data; boundary=----DeskewPreviewBoundary
+
+------DeskewPreviewBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------DeskewPreviewBoundary--
+
+### Deskew automatically
+POST {{baseUrl}}/api/v1/pdf/deskew
+Content-Type: multipart/form-data; boundary=----DeskewAutoBoundary
+
+------DeskewAutoBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------DeskewAutoBoundary--
+
+### Rotate every page by the same manual angle (clockwise degrees, -180 to 180)
+POST {{baseUrl}}/api/v1/pdf/deskew?manual_angle=2.5
+Content-Type: multipart/form-data; boundary=----DeskewSingleAngleBoundary
+
+------DeskewSingleAngleBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------DeskewSingleAngleBoundary--
+
+### Rotate each page by a separate manual angle (clockwise degrees, -180 to 180)
+# Replace the JSON array with exactly one angle per page in the uploaded PDF.
+POST {{baseUrl}}/api/v1/pdf/deskew
+Content-Type: multipart/form-data; boundary=----DeskewPageAnglesBoundary
+
+------DeskewPageAnglesBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------DeskewPageAnglesBoundary
+Content-Disposition: form-data; name="manual_angles"
+
+[1.5, -2.0]
+------DeskewPageAnglesBoundary--
+
+###############################################################################
+# Enhance PDF
+###############################################################################
+
+### Preview enhanced first page (returns image/jpeg)
+POST {{baseUrl}}/api/v1/pdf/enhance/preview?grayscale=false&contrast=1.15&brightness=1.05&sharpen=0.3&denoise=false&threshold=false&background_cleanup=false
+Content-Type: multipart/form-data; boundary=----EnhancePreviewBoundary
+
+------EnhancePreviewBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------EnhancePreviewBoundary--
+
+### Enhance full PDF
+POST {{baseUrl}}/api/v1/pdf/enhance?grayscale=false&contrast=1.15&brightness=1.05&sharpen=0.3&denoise=false&threshold=false&background_cleanup=false
+Content-Type: multipart/form-data; boundary=----EnhancePdfBoundary
+
+------EnhancePdfBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------EnhancePdfBoundary--
+
+###############################################################################
+# Extract tables
+###############################################################################
+
+### Extract tables as JSON
+POST {{baseUrl}}/api/v1/pdf/extract-tables?output_format=json&image_format=png&page_start=1&table_index=all&ocr=auto&merge_tables=true
+Content-Type: multipart/form-data; boundary=----ExtractTablesBoundary
+
+------ExtractTablesBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------ExtractTablesBoundary--
+
+### Extract tables as CSV
+POST {{baseUrl}}/api/v1/pdf/extract-tables?output_format=csv&page_start=1&table_index=all&ocr=auto&merge_tables=true
+Content-Type: multipart/form-data; boundary=----ExtractTablesCsvBoundary
+
+------ExtractTablesCsvBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------ExtractTablesCsvBoundary--
+
+### Extract tables as XLSX, HTML, Markdown, or image
+# Change output_format to xlsx, html, markdown, or image as needed.
+# image_format is used only when output_format=image (png or jpeg).
+POST {{baseUrl}}/api/v1/pdf/extract-tables?output_format=xlsx&image_format=png&page_start=1&table_index=all&ocr=auto&merge_tables=true
+Content-Type: multipart/form-data; boundary=----ExtractTablesOtherBoundary
+
+------ExtractTablesOtherBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------ExtractTablesOtherBoundary--
