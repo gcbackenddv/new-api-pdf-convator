@@ -251,6 +251,13 @@ class Settings:
         self.COMPARE_JOB_TTL_SECONDS: int = _env_int("COMPARE_JOB_TTL_SECONDS", 3600)
 
         # ------------------------------------------------------------------
+        # Remove Blank Pages
+        # ------------------------------------------------------------------
+        self.REMOVE_BLANK_PAGES_DIRNAME: str = "pdf_remove_blank_pages"
+        self.BLANK_PAGE_THRESHOLD: float = _env_float("BLANK_PAGE_THRESHOLD", 0.0005)
+        self.BLANK_PAGE_DPI: int = _env_int("BLANK_PAGE_DPI", 72)
+
+        # ------------------------------------------------------------------
         # Rendering safety (shared)
         # ------------------------------------------------------------------
         self.MAX_RENDER_DPI: int = _env_int("MAX_RENDER_DPI", 150)
