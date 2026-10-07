@@ -10,7 +10,7 @@ import logging
 from http import HTTPStatus
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
@@ -115,16 +115,24 @@ def _to_http_exception(exc: Exception) -> HTTPException:
 )
 def flatten_pdf_document(
     file: UploadFile = File(..., description="The PDF file (multipart/form-data)."),
+    flatten_forms: bool = Form(True, description="Flatten interactive form fields into permanent page content"),
+    flatten_annotations: bool = Form(True, description="Flatten general annotations (highlights, text, drawings)"),
+    flatten_stamps: bool = Form(True, description="Flatten stamp annotations"),
     settings: FlattenSettings = Depends(get_flatten_settings),
 ) -> FileResponse:
     # A plain ``def`` endpoint: FastAPI runs it in the threadpool, which is
     # right for blocking file I/O and CPU-bound PyMuPDF calls.
+    effective_settings = FlattenSettings.from_config(
+        flatten_forms=flatten_forms,
+        flatten_annotations=flatten_annotations,
+        flatten_stamps=flatten_stamps,
+    )
     job: service.FlattenJob | None = None
     try:
-        service.validate_upload_metadata(file.filename, file.content_type, file.size, settings)
-        job = service.create_job(settings)
-        service.save_upload(file.file, job, settings)
-        result = service.flatten_pdf(job, settings)
+        service.validate_upload_metadata(file.filename, file.content_type, file.size, effective_settings)
+        job = service.create_job(effective_settings)
+        service.save_upload(file.file, job, effective_settings)
+        result = service.flatten_pdf(job, effective_settings)
     except Exception as exc:
         if job is not None:
             service.cleanup_job(job.root)
@@ -134,6 +142,7 @@ def flatten_pdf_document(
         "Cache-Control": "no-store",
         "X-Flatten-Form-Fields": str(result.form_fields),
         "X-Flatten-Annotations": str(result.annotations),
+        "X-Flatten-Stamps": str(result.stamps),
     }
     if result.was_signed:
         headers["X-Signature-Invalidated"] = "true"
