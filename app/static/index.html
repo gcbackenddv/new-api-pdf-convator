@@ -21,34 +21,67 @@
   </header>
 
   <main class="layout">
-    <section class="intro">
-      <p class="eyebrow">DEVELOPER TOOLKIT <span class="eyebrow-line"></span></p>
-      <h1>File conversion<br><span>API tester.</span></h1>
-      <p class="intro-copy">Choose an operation, add your file, and send a request to this running API. Converted files download automatically.</p>
-      <div class="quick-links" aria-label="Quick API checks">
-        <button class="quick-link" type="button" data-get="/">GET <code>/</code><span aria-hidden="true">↗</span></button>
-        <button class="quick-link" type="button" data-get="/about">GET <code>/about</code><span aria-hidden="true">↗</span></button>
-        <button class="quick-link" type="button" data-get="/openapi.json">GET <code>/openapi.json</code><span aria-hidden="true">↗</span></button>
-      </div>
-      <section class="response-panel" aria-live="polite" aria-label="Latest API response">
-        <div class="response-heading">
-          <div><span class="response-mark" aria-hidden="true">›_</span><strong>Response</strong></div>
-          <span id="response-status" class="response-status">READY</span>
-        </div>
-        <p id="response-message" class="response-message">Your API response will appear here.</p>
-        <pre id="response-body" class="response-body">Waiting for a request…</pre>
-      </section>
-      <p class="local-note"><span aria-hidden="true">ⓘ</span> Requests are sent to the same host serving this page.</p>
-    </section>
-
-    <section class="operations" aria-label="API operations">
-      <div class="section-heading">
+    <aside class="pdf-preview-panel" aria-label="PDF preview">
+      <div class="pdf-preview-heading">
         <div>
-          <p class="eyebrow">AVAILABLE ENDPOINTS</p>
-          <h2>Choose an operation</h2>
+          <p class="preview-eyebrow">LOCAL FILE PREVIEW</p>
+          <h2>PDF preview</h2>
         </div>
-        <span class="operation-count">14 FILE OPERATIONS</span>
+        <span class="preview-indicator" aria-hidden="true"></span>
       </div>
+      <p id="pdf-preview-source" class="pdf-preview-source">Choose a PDF in any operation to preview it here.</p>
+      <div id="pdf-preview-files" class="pdf-preview-files" role="group" aria-label="PDF files to preview" hidden></div>
+      <div class="deskew-preview-heading" hidden>
+        <span>PAGE ROTATION</span>
+        <span>Move a slider to rotate that page</span>
+      </div>
+      <div class="deskew-pages" id="deskew-pages" aria-live="polite" hidden></div>
+      <div id="enhance-preview" class="enhance-preview" aria-live="polite" hidden>
+        <div class="enhance-preview-status">
+          <span>LIVE EFFECT PREVIEW · PAGE 1</span>
+          <span id="enhance-preview-message">Choose settings to preview the enhancement.</span>
+        </div>
+        <img id="enhance-preview-image" alt="Live preview of enhanced PDF page 1" hidden>
+      </div>
+      <div id="pdf-preview-empty" class="pdf-preview-empty">
+        <span class="preview-file-icon" aria-hidden="true">PDF</span>
+        <strong>Your preview will appear here</strong>
+        <span>Select a PDF file to inspect it before sending your request.</span>
+      </div>
+      <iframe id="pdf-preview-frame" class="pdf-preview-frame" title="Selected PDF preview" hidden></iframe>
+      <a id="pdf-preview-open" class="pdf-preview-open" target="_blank" rel="noreferrer" hidden>Open PDF in new tab <span aria-hidden="true">↗</span></a>
+      <p class="pdf-preview-note">The main preview is local. Live deskew and enhancement previews send the selected PDF to a preview endpoint; processing starts when you submit.</p>
+    </aside>
+
+    <div class="tool-column">
+      <section class="intro">
+        <p class="eyebrow">DEVELOPER TOOLKIT <span class="eyebrow-line"></span></p>
+        <h1>File conversion<br><span>API tester.</span></h1>
+        <p class="intro-copy">Choose an operation, add your file, and send a request to this running API. Converted files download automatically.</p>
+        <div class="quick-links" aria-label="Quick API checks">
+          <button class="quick-link" type="button" data-get="/">GET <code>/</code><span aria-hidden="true">↗</span></button>
+          <button class="quick-link" type="button" data-get="/about">GET <code>/about</code><span aria-hidden="true">↗</span></button>
+          <button class="quick-link" type="button" data-get="/openapi.json">GET <code>/openapi.json</code><span aria-hidden="true">↗</span></button>
+        </div>
+        <section class="response-panel" aria-live="polite" aria-label="Latest API response">
+          <div class="response-heading">
+            <div><span class="response-mark" aria-hidden="true">›_</span><strong>Response</strong></div>
+            <span id="response-status" class="response-status">READY</span>
+          </div>
+          <p id="response-message" class="response-message">Your API response will appear here.</p>
+          <pre id="response-body" class="response-body">Waiting for a request…</pre>
+        </section>
+        <p class="local-note"><span aria-hidden="true">ⓘ</span> Requests are sent to the same host serving this page.</p>
+      </section>
+
+      <section class="operations" aria-label="API operations">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">AVAILABLE ENDPOINTS</p>
+            <h2>Choose an operation</h2>
+          </div>
+          <span class="operation-count">14 FILE OPERATIONS</span>
+        </div>
 
       <article class="operation-card">
         <div class="card-top">
@@ -246,9 +279,8 @@
               <option value="manual">Manual per page</option>
             </select>
           </label>
-          <div class="deskew-pages" id="deskew-pages" aria-live="polite"></div>
           <input id="deskew-angles" name="manual_angles" type="hidden" data-form>
-          <p class="standalone-hint">Choose a PDF to preview every page. Automatic mode detects skew; manual mode lets you set a separate clockwise rotation for each page. Pages left at 0° will not be rotated.</p>
+          <p class="standalone-hint">Automatic mode detects skew. Moving any page slider switches to manual mode and rotates only that page; other pages stay at 0°.</p>
           <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
         </form>
       </article>
@@ -374,7 +406,8 @@
         <p class="health-copy">Check whether the PowerPoint-to-PDF conversion engine is available.</p>
         <button class="send-button" type="button" data-get="/convert/pptx-to-pdf/health">Check engine <span aria-hidden="true">→</span></button>
       </article>
-    </section>
+      </section>
+    </div>
   </main>
   <footer class="footer"><span>ConvertLab <span class="footer-muted">· API tester</span></span><span>Built for local development</span></footer>
 </body>

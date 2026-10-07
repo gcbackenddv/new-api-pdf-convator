@@ -114,6 +114,214 @@ document.querySelectorAll("[data-get]").forEach((button) => {
   button.addEventListener("click", () => sendRequest(button.dataset.get));
 });
 
+const pdfPreviewSource = document.querySelector("#pdf-preview-source");
+const pdfPreviewFiles = document.querySelector("#pdf-preview-files");
+const pdfPreviewEmpty = document.querySelector("#pdf-preview-empty");
+const pdfPreviewFrame = document.querySelector("#pdf-preview-frame");
+const pdfPreviewOpen = document.querySelector("#pdf-preview-open");
+const pdfPreviewIndicator = document.querySelector(".preview-indicator");
+const deskewForm = document.querySelector('form[data-endpoint="/api/v1/pdf/deskew"]');
+const deskewFileInput = deskewForm.querySelector("#deskew-file");
+const deskewPages = document.querySelector("#deskew-pages");
+const deskewAnglesInput = deskewForm.querySelector("#deskew-angles");
+const deskewMode = deskewForm.querySelector("#deskew-mode");
+const deskewSubmitButton = deskewForm.querySelector('button[type="submit"]');
+const deskewPreviewHeading = document.querySelector(".deskew-preview-heading");
+const enhanceForm = document.querySelector('form[data-endpoint="/api/v1/pdf/enhance"]');
+const enhanceFileInput = enhanceForm.querySelector("#enhance-file");
+const enhancePreview = document.querySelector("#enhance-preview");
+const enhancePreviewImage = document.querySelector("#enhance-preview-image");
+const enhancePreviewMessage = document.querySelector("#enhance-preview-message");
+let activePreviewForm = null;
+let activePreviewUrl = null;
+let deskewPreviewRequestId = 0;
+let deskewSliders = [];
+let enhancePreviewUrl = null;
+let enhancePreviewController = null;
+let enhancePreviewTimer = null;
+let enhancePreviewRequestId = 0;
+
+function cancelEnhancePreview() {
+  window.clearTimeout(enhancePreviewTimer);
+  enhancePreviewController?.abort();
+  enhancePreviewController = null;
+  enhancePreviewRequestId += 1;
+}
+
+function showPdfPreview(files, form, activeIndex = files.length - 1) {
+  if (activePreviewUrl) {
+    URL.revokeObjectURL(activePreviewUrl);
+  }
+  activePreviewForm = form;
+  const operationName = form.closest(".operation-card")?.querySelector("h3")?.textContent.trim();
+  pdfPreviewSource.textContent = operationName || "Selected PDF";
+  pdfPreviewFiles.replaceChildren();
+  pdfPreviewFiles.hidden = files.length < 2;
+  const isDeskewForm = form === deskewForm;
+  const isEnhanceForm = form === enhanceForm;
+  if (isEnhanceForm) {
+    cancelEnhancePreview();
+  }
+  if (!isEnhanceForm) {
+    cancelEnhancePreview();
+    if (enhancePreviewUrl) {
+      URL.revokeObjectURL(enhancePreviewUrl);
+      enhancePreviewUrl = null;
+    }
+    enhancePreviewImage.removeAttribute("src");
+    enhancePreviewImage.hidden = true;
+  }
+  pdfPreviewFrame.hidden = isDeskewForm;
+  deskewPages.hidden = !isDeskewForm;
+  deskewPreviewHeading.hidden = !isDeskewForm;
+  enhancePreview.hidden = !isEnhanceForm;
+  files.forEach(({ file, label }, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "pdf-preview-file";
+    button.textContent = files.length > 1 ? `${label}: ${file.name}` : file.name;
+    button.setAttribute("aria-pressed", String(index === activeIndex));
+    button.addEventListener("click", () => showPdfPreview(files, form, index));
+    pdfPreviewFiles.append(button);
+  });
+
+  const selected = files[activeIndex];
+  activePreviewUrl = URL.createObjectURL(selected.file);
+  pdfPreviewFrame.src = activePreviewUrl;
+  pdfPreviewFrame.title = `Preview of ${selected.file.name}`;
+  pdfPreviewFrame.hidden = isDeskewForm;
+  pdfPreviewOpen.href = activePreviewUrl;
+  pdfPreviewOpen.hidden = false;
+  pdfPreviewEmpty.hidden = true;
+  pdfPreviewIndicator.classList.add("has-file");
+}
+
+function clearPdfPreview(form) {
+  if (activePreviewForm !== form) {
+    return;
+  }
+  if (activePreviewUrl) {
+    URL.revokeObjectURL(activePreviewUrl);
+  }
+  activePreviewForm = null;
+  activePreviewUrl = null;
+  pdfPreviewFrame.removeAttribute("src");
+  pdfPreviewFrame.hidden = true;
+  pdfPreviewOpen.removeAttribute("href");
+  pdfPreviewOpen.hidden = true;
+  pdfPreviewFiles.replaceChildren();
+  pdfPreviewFiles.hidden = true;
+  pdfPreviewSource.textContent = "Choose a PDF in any operation to preview it here.";
+  pdfPreviewEmpty.hidden = false;
+  pdfPreviewIndicator.classList.remove("has-file");
+  deskewPages.hidden = true;
+  deskewPreviewHeading.hidden = true;
+  enhancePreview.hidden = true;
+  cancelEnhancePreview();
+  if (enhancePreviewUrl) {
+    URL.revokeObjectURL(enhancePreviewUrl);
+    enhancePreviewUrl = null;
+  }
+  enhancePreviewImage.removeAttribute("src");
+  enhancePreviewImage.hidden = true;
+}
+
+document.querySelectorAll('input[type="file"][accept*=".pdf"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    const form = input.closest("form");
+    const files = Array.from(form.querySelectorAll('input[type="file"][accept*=".pdf"]'))
+      .flatMap((fileInput) => {
+        const label = Array.from(form.querySelectorAll("label[for]"))
+          .find((candidate) => candidate.htmlFor === fileInput.id)?.textContent.trim();
+        return Array.from(fileInput.files || []).map((file) => ({
+          file,
+          label: label || fileInput.name,
+        }));
+      });
+    if (!files.length) {
+      clearPdfPreview(form);
+      return;
+    }
+    showPdfPreview(files, form);
+    if (form === enhanceForm) {
+      scheduleEnhancePreview();
+    }
+  });
+});
+
+function scheduleEnhancePreview() {
+  if (activePreviewForm !== enhanceForm || !enhanceFileInput.files?.[0]) {
+    return;
+  }
+  window.clearTimeout(enhancePreviewTimer);
+  enhancePreviewTimer = window.setTimeout(refreshEnhancePreview, 250);
+}
+
+async function refreshEnhancePreview() {
+  const file = enhanceFileInput.files?.[0];
+  if (activePreviewForm !== enhanceForm || !file) {
+    return;
+  }
+
+  enhancePreviewController?.abort();
+  const controller = new AbortController();
+  enhancePreviewController = controller;
+  const requestId = ++enhancePreviewRequestId;
+  const query = new URLSearchParams();
+  enhanceForm.querySelectorAll("[data-query]").forEach((field) => {
+    query.set(field.name, field.type === "checkbox" ? String(field.checked) : field.value);
+  });
+  const body = new FormData();
+  body.append("file", file);
+  enhancePreviewMessage.textContent = "Updating preview…";
+
+  try {
+    const response = await fetch(`/api/v1/pdf/enhance/preview?${query}`, {
+      method: "POST",
+      body,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const responseText = await response.text();
+      let detail = responseText || "Could not update the enhancement preview.";
+      try {
+        detail = JSON.parse(responseText).detail || detail;
+      } catch {
+        // Keep the response text when the server did not return JSON.
+      }
+      throw new Error(detail);
+    }
+
+    const previewBlob = await response.blob();
+    if (requestId !== enhancePreviewRequestId || activePreviewForm !== enhanceForm) {
+      return;
+    }
+    if (enhancePreviewUrl) {
+      URL.revokeObjectURL(enhancePreviewUrl);
+    }
+    enhancePreviewUrl = URL.createObjectURL(previewBlob);
+    enhancePreviewImage.src = enhancePreviewUrl;
+    enhancePreviewImage.hidden = false;
+    enhancePreviewMessage.textContent = "Enhanced preview · Page 1";
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return;
+    }
+    if (requestId === enhancePreviewRequestId) {
+      enhancePreviewMessage.textContent = error instanceof Error ? error.message : String(error);
+    }
+  } finally {
+    if (requestId === enhancePreviewRequestId) {
+      enhancePreviewController = null;
+    }
+  }
+}
+
+enhanceForm.querySelectorAll("[data-query]").forEach((field) => {
+  field.addEventListener("input", scheduleEnhancePreview);
+  field.addEventListener("change", scheduleEnhancePreview);
+});
+
 const heicFilesInput = document.querySelector("#heic-files");
 const heicSelection = document.querySelector("#heic-selection");
 
@@ -129,30 +337,28 @@ heicFilesInput.addEventListener("change", () => {
   heicSelection.textContent = `${files.length} image${files.length === 1 ? "" : "s"} selected: ${names}`;
 });
 
-const deskewForm = document.querySelector('form[data-endpoint="/api/v1/pdf/deskew"]');
-const deskewFileInput = deskewForm.querySelector("#deskew-file");
-const deskewPages = deskewForm.querySelector("#deskew-pages");
-const deskewAnglesInput = deskewForm.querySelector("#deskew-angles");
-const deskewMode = deskewForm.querySelector("#deskew-mode");
-const deskewSubmitButton = deskewForm.querySelector('button[type="submit"]');
-let deskewSliders = [];
-
 function updateDeskewMode() {
   const isManual = deskewMode.value === "manual";
-  deskewSliders.forEach((slider) => { slider.disabled = !isManual; });
+  deskewSliders.forEach((slider) => { slider.disabled = false; });
   deskewAnglesInput.disabled = !isManual;
 }
 
 deskewFileInput.addEventListener("change", async () => {
   const file = deskewFileInput.files?.[0];
+  const requestId = ++deskewPreviewRequestId;
   deskewPages.replaceChildren();
   deskewAnglesInput.value = "";
   deskewSliders = [];
   updateDeskewMode();
   if (!file) {
+    deskewPages.hidden = true;
+    deskewPreviewHeading.hidden = true;
     return;
   }
 
+  deskewPages.hidden = false;
+  deskewPreviewHeading.hidden = false;
+  pdfPreviewFrame.hidden = true;
   deskewSubmitButton.disabled = true;
   deskewPages.textContent = "Loading page previews…";
   const previewBody = new FormData();
@@ -165,6 +371,9 @@ deskewFileInput.addEventListener("change", async () => {
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.detail || "Could not preview this PDF.");
+    }
+    if (requestId !== deskewPreviewRequestId || activePreviewForm !== deskewForm) {
+      return;
     }
 
     const angles = payload.pages.map(() => 0);
@@ -189,9 +398,11 @@ deskewFileInput.addEventListener("change", async () => {
       slider.max = "15";
       slider.step = "0.1";
       slider.value = "0";
-      slider.disabled = deskewMode.value !== "manual";
+      slider.disabled = false;
       slider.setAttribute("aria-label", `Rotation angle for page ${page}`);
       slider.addEventListener("input", () => {
+        deskewMode.value = "manual";
+        updateDeskewMode();
         angles[index] = Number(slider.value);
         output.textContent = `${angles[index].toFixed(1)}°`;
         image.style.transform = `rotate(${angles[index]}deg)`;
@@ -205,9 +416,13 @@ deskewFileInput.addEventListener("change", async () => {
     deskewAnglesInput.value = JSON.stringify(angles);
     deskewPages.replaceChildren(fragment);
   } catch (error) {
-    deskewPages.textContent = error instanceof Error ? error.message : String(error);
+    if (requestId === deskewPreviewRequestId && activePreviewForm === deskewForm) {
+      deskewPages.textContent = error instanceof Error ? error.message : String(error);
+    }
   } finally {
-    deskewSubmitButton.disabled = false;
+    if (requestId === deskewPreviewRequestId) {
+      deskewSubmitButton.disabled = false;
+    }
   }
 });
 deskewMode.addEventListener("change", updateDeskewMode);
