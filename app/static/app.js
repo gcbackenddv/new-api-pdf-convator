@@ -40,6 +40,12 @@ async function sendRequest(url, options = {}, download = false) {
       const ocrPages = response.headers.get("x-ocr-pages");
       const ocrWords = response.headers.get("x-ocr-words");
       const ocrPagesSkipped = response.headers.get("x-ocr-pages-skipped");
+      const removedPages = response.headers.get("x-removed-pages");
+      const remainingPages = response.headers.get("x-remaining-pages");
+      const originalPages = response.headers.get("x-original-pages");
+      const removedPageNumbers = response.headers.get("x-removed-page-numbers");
+      const pdfRepaired = response.headers.get("x-pdf-repaired");
+      const pdfPages = response.headers.get("x-pdf-pages");
       const formatSuffix = outputFormat && outputFormat !== "original" ? `-${outputFormat}` : "";
       const defaultName = flattenFormFields !== null
         ? "flattened-document.pdf"
@@ -47,7 +53,11 @@ async function sendRequest(url, options = {}, download = false) {
           ? `extracted-images${formatSuffix}.zip`
           : tableCount !== null
             ? `extracted-tables${contentType.includes("json") ? ".json" : ""}`
-          : "download";
+            : removedPages !== null
+              ? "cleaned-document.pdf"
+              : pdfRepaired !== null
+                ? "repaired-document.pdf"
+                : "download";
       link.download = filenameFromResponse(response, defaultName);
       document.body.append(link);
       link.click();
@@ -64,19 +74,33 @@ async function sendRequest(url, options = {}, download = false) {
       const searchableMessage = ocrWords === null
         ? null
         : `Searchable PDF created. OCR recognized ${Number(ocrWords).toLocaleString()} words across ${ocrPages || "0"} page${ocrPages === "1" ? "" : "s"}${ocrPagesSkipped && ocrPagesSkipped !== "0" ? `; skipped ${ocrPagesSkipped} page${ocrPagesSkipped === "1" ? "" : "s"} that already had text` : ""}. Your download has started.`;
+      const blankPagesMessage = removedPages === null
+        ? null
+        : `Cleaned PDF downloaded. Removed ${removedPages} blank page${removedPages === "1" ? "" : "s"} (kept ${remainingPages} of ${originalPages}${removedPageNumbers && removedPageNumbers !== "[]" ? `; removed page numbers: ${removedPageNumbers}` : ""}).`;
+      const repairMessage = pdfRepaired === null
+        ? null
+        : `Repaired PDF downloaded (${pdfPages || "unknown"} pages). ${pdfRepaired === "true" ? "Corrupted structures were successfully restored." : "Document structure is healthy and clean."}`;
       const downloadMessage = flattenMessage
         || tableMessage
         || searchableMessage
+        || blankPagesMessage
+        || repairMessage
         || (extractedImageCount === null
           ? "Conversion complete. Your file download has started."
           : `Extracted ${extractedImageCount} embedded image${extractedImageCount === "1" ? "" : "s"}${outputFormat ? ` as ${outputFormat}` : ""}. Your download has started.`);
       const tableDetails = tableCount === null
         ? ""
         : `\nTables extracted: ${tableCount}\nWarnings: ${extractionWarnings || "0"}\nOCR pages: ${ocrPages || "none"}`;
+      const blankDetails = removedPages === null
+        ? ""
+        : `\nOriginal pages: ${originalPages}\nBlank pages removed: ${removedPages}\nRemaining pages: ${remainingPages}\nRemoved page numbers: ${removedPageNumbers || "[]"}`;
+      const repairDetails = pdfRepaired === null
+        ? ""
+        : `\nTotal pages: ${pdfPages}\nRepaired: ${pdfRepaired}`;
       showResponse(
         `${response.status} ${response.statusText}`,
         downloadMessage,
-        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).${flattenFormFields === null ? "" : `\nForm fields found: ${flattenFormFields}\nAnnotations found: ${flattenAnnotations || "0"}\nSignature invalidated: ${signatureInvalidated ? "yes" : "no"}.`}${tableDetails}`
+        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).${flattenFormFields === null ? "" : `\nForm fields found: ${flattenFormFields}\nAnnotations found: ${flattenAnnotations || "0"}\nSignature invalidated: ${signatureInvalidated ? "yes" : "no"}.`}${tableDetails}${blankDetails}${repairDetails}`
       );
       return;
     }
@@ -466,3 +490,120 @@ document.querySelectorAll("form[data-endpoint]").forEach((form) => {
       .finally(() => { button.disabled = false; });
   });
 });
+
+// ==========================================================================
+// Drag & Drop Enhancements (Commented out)
+// ==========================================================================
+/*
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function updateDropZone(zone, files) {
+  const prompt = zone.querySelector(".drop-zone-prompt");
+  const info = zone.querySelector(".drop-zone-file-info");
+  const filename = zone.querySelector(".drop-zone-filename");
+  const filesize = zone.querySelector(".drop-zone-filesize");
+  const badge = zone.querySelector(".drop-zone-file-badge");
+
+  if (!files || files.length === 0) {
+    if (prompt) prompt.hidden = false;
+    if (info) info.hidden = true;
+    return;
+  }
+
+  if (prompt) prompt.hidden = true;
+  if (info) info.hidden = false;
+
+  if (files.length === 1) {
+    const file = files[0];
+    if (filename) filename.textContent = file.name;
+    if (filesize) filesize.textContent = formatBytes(file.size);
+    if (badge) {
+      const parts = file.name.split(".");
+      const ext = parts.length > 1 ? parts.pop().toUpperCase() : "FILE";
+      badge.textContent = ext;
+    }
+  } else {
+    const totalBytes = Array.from(files).reduce((acc, f) => acc + f.size, 0);
+    if (filename) filename.textContent = `${files.length} files selected`;
+    if (filesize) filesize.textContent = formatBytes(totalBytes);
+    if (badge) badge.textContent = `${files.length} FILES`;
+  }
+}
+
+document.querySelectorAll(".drop-zone").forEach((zone) => {
+  const input = zone.querySelector(".drop-zone-input");
+  if (!input) return;
+
+  input.addEventListener("change", () => {
+    updateDropZone(zone, input.files);
+  });
+
+  zone.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    zone.classList.add("drag-over");
+  });
+
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    zone.classList.add("drag-over");
+  });
+
+  zone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    if (!zone.contains(e.relatedTarget)) {
+      zone.classList.remove("drag-over");
+    }
+  });
+
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      input.files = e.dataTransfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+});
+
+document.querySelectorAll(".operation-card").forEach((card) => {
+  card.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    card.classList.add("card-drag-over");
+  });
+
+  card.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    card.classList.add("card-drag-over");
+  });
+
+  card.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    if (!card.contains(e.relatedTarget)) {
+      card.classList.remove("card-drag-over");
+    }
+  });
+
+  card.addEventListener("drop", (e) => {
+    card.classList.remove("card-drag-over");
+    if (e.target.closest(".drop-zone")) {
+      return;
+    }
+    e.preventDefault();
+    const input = card.querySelector(".drop-zone-input") || card.querySelector('input[type="file"]');
+    if (input && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      input.files = e.dataTransfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+});
+
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => e.preventDefault());
+*/
+
