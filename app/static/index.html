@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +9,7 @@
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
 </head>
+
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="File Conversion API Tester home">
@@ -49,19 +51,25 @@
         <span>Select a PDF file to inspect it before sending your request.</span>
       </div>
       <iframe id="pdf-preview-frame" class="pdf-preview-frame" title="Selected PDF preview" hidden></iframe>
-      <a id="pdf-preview-open" class="pdf-preview-open" target="_blank" rel="noreferrer" hidden>Open PDF in new tab <span aria-hidden="true">↗</span></a>
-      <p class="pdf-preview-note">The main preview is local. Live deskew and enhancement previews send the selected PDF to a preview endpoint; processing starts when you submit.</p>
+      <a id="pdf-preview-open" class="pdf-preview-open" target="_blank" rel="noreferrer" hidden>Open PDF in new tab
+        <span aria-hidden="true">↗</span></a>
+      <p class="pdf-preview-note">The main preview is local. Live deskew and enhancement previews send the selected PDF
+        to a preview endpoint; processing starts when you submit.</p>
     </aside>
 
     <div class="tool-column">
       <section class="intro">
         <p class="eyebrow">DEVELOPER TOOLKIT <span class="eyebrow-line"></span></p>
         <h1>File conversion<br><span>API tester.</span></h1>
-        <p class="intro-copy">Choose an operation, add your file, and send a request to this running API. Converted files download automatically.</p>
+        <p class="intro-copy">Choose an operation, add your file, and send a request to this running API. Converted
+          files download automatically.</p>
         <div class="quick-links" aria-label="Quick API checks">
-          <button class="quick-link" type="button" data-get="/">GET <code>/</code><span aria-hidden="true">↗</span></button>
-          <button class="quick-link" type="button" data-get="/about">GET <code>/about</code><span aria-hidden="true">↗</span></button>
-          <button class="quick-link" type="button" data-get="/openapi.json">GET <code>/openapi.json</code><span aria-hidden="true">↗</span></button>
+          <button class="quick-link" type="button" data-get="/">GET <code>/</code><span
+              aria-hidden="true">↗</span></button>
+          <button class="quick-link" type="button" data-get="/about">GET <code>/about</code><span
+              aria-hidden="true">↗</span></button>
+          <button class="quick-link" type="button" data-get="/openapi.json">GET <code>/openapi.json</code><span
+              aria-hidden="true">↗</span></button>
         </div>
         <section class="response-panel" aria-live="polite" aria-label="Latest API response">
           <div class="response-heading">
@@ -71,7 +79,8 @@
           <p id="response-message" class="response-message">Your API response will appear here.</p>
           <pre id="response-body" class="response-body">Waiting for a request…</pre>
         </section>
-        <p class="local-note"><span aria-hidden="true">ⓘ</span> Requests are sent to the same host serving this page.</p>
+        <p class="local-note"><span aria-hidden="true">ⓘ</span> Requests are sent to the same host serving this page.
+        </p>
       </section>
 
       <section class="operations" aria-label="API operations">
@@ -80,346 +89,445 @@
             <p class="eyebrow">AVAILABLE ENDPOINTS</p>
             <h2>Choose an operation</h2>
           </div>
-          <span class="operation-count">14 FILE OPERATIONS</span>
+          <span class="operation-count">13 CORE OPERATIONS</span>
         </div>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-violet" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
+        <!-- Drag and drop option (commented out)
+      <div class="drop-zone">
+        <input id="example-file" name="file" type="file" accept=".pdf,application/pdf" required class="drop-zone-input">
+        <div class="drop-zone-prompt">
+          <svg class="drop-zone-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="drop-zone-text"><strong>Drag & drop PDF here</strong> or <span>browse</span></div>
         </div>
-        <h3>PDF <span class="arrow">→</span> HEIC</h3>
-        <code class="endpoint">/convert/pdf-to-heic</code>
-        <form data-endpoint="/convert/pdf-to-heic" data-download="true">
-          <label class="field-label" for="pdf-heic-file">PDF file</label>
-          <input id="pdf-heic-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="400" value="200" data-query></label>
-            <label class="field-label">Quality<input name="quality" type="number" min="1" max="100" value="90" data-query></label>
-          </div>
-          <button class="send-button" type="submit">Convert to HEIC <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+        <div class="drop-zone-file-info" hidden>
+          <span class="drop-zone-file-badge">PDF</span>
+          <span class="drop-zone-filename"></span>
+          <span class="drop-zone-filesize"></span>
+          <span class="drop-zone-replace-hint">Click or drop to replace</span>
+        </div>
+      </div>
+      -->
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Long image</h3>
-        <code class="endpoint">/convert/pdf-to-long-image</code>
-        <form data-endpoint="/convert/pdf-to-long-image" data-download="true">
-          <label class="field-label" for="long-image-file">PDF file</label>
-          <input id="long-image-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label">Format
-              <select name="format" data-query><option value="png">PNG</option><option value="jpg">JPG</option><option value="heic">HEIC</option></select>
-            </label>
-            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150" data-query></label>
-            <label class="field-label">Quality<input name="quality" type="number" min="1" max="100" value="90" data-query></label>
+        <!-- 1. PDF to Long Image -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <button class="send-button" type="submit">Create long image <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>1. PDF to Long Image</h3>
+          <code class="endpoint">/convert/pdf-to-long-image</code>
+          <form data-endpoint="/convert/pdf-to-long-image" data-download="true">
+            <label class="field-label" for="long-image-file">PDF file</label>
+            <input id="long-image-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label">Format
+                <select name="format" data-query>
+                  <option value="png">PNG</option>
+                  <option value="jpg">JPG</option>
+                  <option value="heic">HEIC</option>
+                </select>
+              </label>
+              <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150"
+                  data-query></label>
+              <label class="field-label">Quality<input name="quality" type="number" min="1" max="100" value="90"
+                  data-query></label>
+            </div>
+            <button class="send-button" type="submit">Create long image <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-orange" aria-hidden="true">HEIC</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>HEIC <span class="arrow">→</span> PDF</h3>
-        <code class="endpoint">/convert/heic-to-pdf</code>
-        <form data-endpoint="/convert/heic-to-pdf" data-download="true">
-          <label class="field-label" for="heic-files">HEIC / HEIF images <span class="field-hint">Select multiple files</span></label>
-          <input id="heic-files" name="files" type="file" accept=".heic,.heif,image/heic,image/heif" multiple required>
-          <p class="file-selection" id="heic-selection" aria-live="polite">No images selected. Each uploaded image becomes one PDF page.</p>
-          <div class="field-row">
-            <label class="field-label">Page size
-              <select name="page_size" data-query><option value="auto">Auto</option><option value="a4">A4</option><option value="letter">Letter</option></select>
-            </label>
-            <label class="field-label">Sort
-              <select name="sort" data-query><option value="false">Upload order</option><option value="name">By name</option></select>
-            </label>
-            <label class="field-label">Compression
-              <select name="compression" data-query><option value="jpeg">JPEG</option><option value="lossless">Lossless</option></select>
-            </label>
+        <!-- 2. PDF to HEIC -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-violet" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <button class="send-button" type="submit">Convert to PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>2. PDF to HEIC</h3>
+          <code class="endpoint">/convert/pdf-to-heic</code>
+          <form data-endpoint="/convert/pdf-to-heic" data-download="true">
+            <label class="field-label" for="pdf-heic-file">PDF file</label>
+            <input id="pdf-heic-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label">DPI<input name="dpi" type="number" min="72" max="400" value="200"
+                  data-query></label>
+              <label class="field-label">Quality<input name="quality" type="number" min="1" max="100" value="90"
+                  data-query></label>
+            </div>
+            <button class="send-button" type="submit">Convert to HEIC <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-red" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> PowerPoint</h3>
-        <code class="endpoint">/convert/pdf-to-pptx</code>
-        <form data-endpoint="/convert/pdf-to-pptx" data-download="true">
-          <label class="field-label" for="pdf-pptx-file">PDF file</label>
-          <input id="pdf-pptx-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150" data-query></label>
-            <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable OCR</label>
+        <!-- 3. PDF to PPTX -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-red" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <button class="send-button" type="submit">Convert to PowerPoint <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>3. PDF to PPTX</h3>
+          <code class="endpoint">/convert/pdf-to-pptx</code>
+          <form data-endpoint="/convert/pdf-to-pptx" data-download="true">
+            <label class="field-label" for="pdf-pptx-file">PDF file</label>
+            <input id="pdf-pptx-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150"
+                  data-query></label>
+              <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable
+                OCR</label>
+            </div>
+            <button class="send-button" type="submit">Convert to PowerPoint <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-red" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> PowerPoint v1</h3>
-        <code class="endpoint">/api/v1/pdf-to-pptx</code>
-        <form data-endpoint="/api/v1/pdf-to-pptx" data-download="true">
-          <label class="field-label" for="pdf-pptx-v1-file">PDF file</label>
-          <input id="pdf-pptx-v1-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150" data-query></label>
-            <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable OCR</label>
+        <!-- 4. HEIC to PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-orange" aria-hidden="true">HEIC</span>
+            <span class="method-badge">POST</span>
           </div>
-          <button class="send-button" type="submit">Try v1 endpoint <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>4. HEIC to PDF</h3>
+          <code class="endpoint">/convert/heic-to-pdf</code>
+          <form data-endpoint="/convert/heic-to-pdf" data-download="true">
+            <label class="field-label" for="heic-files">HEIC / HEIF images <span class="field-hint">Select or drop
+                multiple files</span></label>
+            <input id="heic-files" name="files" type="file" accept=".heic,.heif,image/heic,image/heif" multiple
+              required>
+            <p class="file-selection" id="heic-selection" aria-live="polite">No images selected. Each uploaded image
+              becomes one PDF page.</p>
+            <div class="field-row">
+              <label class="field-label">Page size
+                <select name="page_size" data-query>
+                  <option value="auto">Auto</option>
+                  <option value="a4">A4</option>
+                  <option value="letter">Letter</option>
+                </select>
+              </label>
+              <label class="field-label">Sort
+                <select name="sort" data-query>
+                  <option value="false">Upload order</option>
+                  <option value="name">By name</option>
+                </select>
+              </label>
+              <label class="field-label">Compression
+                <select name="compression" data-query>
+                  <option value="jpeg">JPEG</option>
+                  <option value="lossless">Lossless</option>
+                </select>
+              </label>
+            </div>
+            <button class="send-button" type="submit">Convert to PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Embedded images</h3>
-        <code class="endpoint">/api/v1/pdf/extract-images</code>
-        <form data-endpoint="/api/v1/pdf/extract-images" data-download="true">
-          <label class="field-label" for="extract-images-file">PDF file</label>
-          <input id="extract-images-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label" for="extract-images-format">Output format
-              <select id="extract-images-format" name="output_format" data-form>
-                <option value="original">Keep original format</option>
-                <option value="jpg">JPG</option>
-                <option value="png">PNG</option>
-                <option value="webp">WebP</option>
-                <option value="heic">HEIC</option>
-              </select>
-            </label>
+        <!-- 5. PPTX to PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-green" aria-hidden="true">PPT</span>
+            <span class="method-badge">POST</span>
           </div>
-          <p class="standalone-hint">Choose an output format before extracting. Uploading a PDF alone keeps each embedded image in its original format. Images download in a ZIP; pages are not exported as screenshots.</p>
-          <button class="send-button" type="submit">Extract images <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>5. PPTX to PDF</h3>
+          <code class="endpoint">/convert/pptx-to-pdf</code>
+          <form data-endpoint="/convert/pptx-to-pdf" data-download="true">
+            <label class="field-label" for="pptx-file">PPT / PPTX file</label>
+            <input id="pptx-file" name="file" type="file"
+              accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              required>
+            <p class="field-hint standalone-hint">Requires LibreOffice on the server.</p>
+            <button class="send-button" type="submit">Convert to PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Flattened PDF</h3>
-        <code class="endpoint">/api/v1/pdf/flatten</code>
-        <form data-endpoint="/api/v1/pdf/flatten" data-download="true">
-          <label class="field-label" for="pdf-flatten-file">PDF file</label>
-          <input id="pdf-flatten-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label field-checkbox"><input name="flatten_forms" type="checkbox" checked data-form> Flatten Form Fields</label>
-            <label class="field-label field-checkbox"><input name="flatten_annotations" type="checkbox" checked data-form> Flatten Annotations</label>
-            <label class="field-label field-checkbox"><input name="flatten_stamps" type="checkbox" checked data-form> Flatten Stamps</label>
+        <!-- 6. Repair PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <div class="field-row">
-            <label class="field-label field-checkbox" style="font-weight:600;"><input name="full_flatten" type="checkbox" data-form> Full PDF Flatten (Non-selectable & Non-editable)</label>
-            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150" data-form></label>
-          </div>
-          <p class="standalone-hint">Standard mode merges interactive fields into permanent vectors/text. <strong>Full PDF Flatten</strong> rasterizes pages so that all text and elements become completely non-selectable and non-copyable.</p>
-          <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>6. Repair PDF</h3>
+          <code class="endpoint">/api/v1/pdf/repair</code>
+          <form data-endpoint="/api/v1/pdf/repair" data-download="true">
+            <label class="field-label" for="repair-pdf-file">Corrupted / Damaged PDF file</label>
+            <input id="repair-pdf-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <p class="standalone-hint">Rebuilds broken cross-reference (XREF) tables, repairs corrupted streams, and
+              restores unreadable PDF pages.</p>
+            <button class="send-button" type="submit">Repair PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Auto-rotated PDF</h3>
-        <code class="endpoint">/api/v1/pdf/auto-rotate</code>
-        <form data-endpoint="/api/v1/pdf/auto-rotate" data-download="true">
-          <label class="field-label" for="auto-rotate-file">PDF file</label>
-          <input id="auto-rotate-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <p class="standalone-hint">Detects page orientation and corrects rotations of 0°, 90°, 180°, or 270°.</p>
-          <button class="send-button" type="submit">Auto-rotate PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
-
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>Compare two PDFs</h3>
-        <code class="endpoint">/api/v1/compare-pdf</code>
-        <form data-endpoint="/api/v1/compare-pdf" data-download="true">
-          <label class="field-label" for="compare-original-file">Original / baseline PDF</label>
-          <input id="compare-original-file" name="original_pdf" type="file" accept=".pdf,application/pdf" required>
-          <label class="field-label" for="compare-new-file">New / revised PDF</label>
-          <input id="compare-new-file" name="new_pdf" type="file" accept=".pdf,application/pdf" required>
-          <label class="field-label" for="compare-report-format">Report format
-            <select id="compare-report-format" name="report_format" data-query>
-              <option value="pdf">PDF</option>
-              <option value="html">HTML</option>
-            </select>
-          </label>
-          <p class="standalone-hint">Compares text, visual content, and page structure, then downloads the selected report.</p>
-          <button class="send-button" type="submit">Compare PDFs <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
-
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Deskewed PDF</h3>
-        <code class="endpoint">/api/v1/pdf/deskew</code>
-        <form data-endpoint="/api/v1/pdf/deskew" data-download="true">
-          <label class="field-label" for="deskew-file">PDF file</label>
-          <input id="deskew-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <label class="field-label" for="deskew-mode">Deskew method
-            <select id="deskew-mode" name="deskew_mode">
-              <option value="auto">Automatic</option>
-              <option value="manual">Manual per page</option>
-            </select>
-          </label>
-          <input id="deskew-angles" name="manual_angles" type="hidden" data-form>
-          <p class="standalone-hint">Automatic mode corrects small skew. Use each preview slider for manual page rotation from −180° to +180°; changing a slider switches to manual mode.</p>
-          <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
-
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Enhanced PDF</h3>
-        <code class="endpoint">/api/v1/pdf/enhance</code>
-        <form data-endpoint="/api/v1/pdf/enhance" data-download="true">
-          <label class="field-label" for="enhance-file">PDF file</label>
-          <input id="enhance-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label field-checkbox"><input name="grayscale" type="checkbox" data-query> Grayscale</label>
-            <label class="field-label">Contrast<input name="contrast" type="number" min="0.5" max="3" step="0.05" value="1.15" data-query></label>
-            <label class="field-label">Brightness<input name="brightness" type="number" min="0.5" max="2" step="0.05" value="1.05" data-query></label>
+        <!-- 7. Extract Images -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <div class="field-row">
-            <label class="field-label">Sharpen<input name="sharpen" type="number" min="0" max="2" step="0.1" value="0.3" data-query></label>
-            <label class="field-label field-checkbox"><input name="denoise" type="checkbox" data-query> Denoise</label>
-            <label class="field-label field-checkbox"><input name="threshold" type="checkbox" data-query> Threshold</label>
-            <label class="field-label field-checkbox"><input name="background_cleanup" type="checkbox" data-query> Clean background</label>
-          </div>
-          <button class="send-button" type="submit">Enhance PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>7. Extract Images</h3>
+          <code class="endpoint">/api/v1/pdf/extract-images</code>
+          <form data-endpoint="/api/v1/pdf/extract-images" data-download="true">
+            <label class="field-label" for="extract-images-file">PDF file</label>
+            <input id="extract-images-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label" for="extract-images-format">Output format
+                <select id="extract-images-format" name="output_format" data-form>
+                  <option value="original">Keep original format</option>
+                  <option value="jpg">JPG</option>
+                  <option value="png">PNG</option>
+                  <option value="webp">WebP</option>
+                  <option value="heic">HEIC</option>
+                </select>
+              </label>
+            </div>
+            <p class="standalone-hint">Extracts embedded images into a ZIP archive without taking page screenshots.</p>
+            <button class="send-button" type="submit">Extract images <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Searchable PDF (OCR)</h3>
-        <code class="endpoint">/api/v1/pdf/make-searchable</code>
-        <form data-endpoint="/api/v1/pdf/make-searchable" data-download="true">
-          <label class="field-label" for="searchable-file">PDF file</label>
-          <input id="searchable-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label">OCR language(s) <span class="field-hint">e.g. auto, eng, eng+ben</span><input name="lang" type="text" placeholder="auto (auto-detect)" data-query></label>
-            <label class="field-label field-checkbox"><input name="force_ocr" type="checkbox" data-query> Force OCR</label>
-            <label class="field-label field-checkbox"><input name="deskew" type="checkbox" data-query> Deskew</label>
-            <label class="field-label field-checkbox"><input name="auto_rotate" type="checkbox" data-query> Auto-rotate</label>
+        <!-- 8. Flatten PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <button class="send-button" type="submit">Make searchable <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>8. Flatten PDF</h3>
+          <code class="endpoint">/api/v1/pdf/flatten</code>
+          <form data-endpoint="/api/v1/pdf/flatten" data-download="true">
+            <label class="field-label" for="pdf-flatten-file">PDF file</label>
+            <input id="pdf-flatten-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label field-checkbox"><input name="flatten_forms" type="checkbox" checked data-form>
+                Flatten Form Fields</label>
+              <label class="field-label field-checkbox"><input name="flatten_annotations" type="checkbox" checked
+                  data-form> Flatten Annotations</label>
+              <label class="field-label field-checkbox"><input name="flatten_stamps" type="checkbox" checked data-form>
+                Flatten Stamps</label>
+            </div>
+            <div class="field-row">
+              <label class="field-label field-checkbox" style="font-weight:600;"><input name="full_flatten"
+                  type="checkbox" data-form> Full PDF Flatten (Non-selectable & Non-editable)</label>
+              <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150"
+                  data-form></label>
+            </div>
+            <p class="standalone-hint">Standard mode merges interactive fields into permanent vectors/text. <strong>Full
+                PDF Flatten</strong> rasterizes pages so that all text and elements become completely non-selectable and
+              non-copyable.</p>
+            <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PDF <span class="arrow">→</span> Extract tables</h3>
-        <code class="endpoint">/api/v1/pdf/extract-tables</code>
-        <form data-endpoint="/api/v1/pdf/extract-tables" data-download="true">
-          <label class="field-label" for="pdf-tables-file">PDF file</label>
-          <input id="pdf-tables-file" name="file" type="file" accept=".pdf,application/pdf" required>
-          <div class="field-row">
-            <label class="field-label" for="tables-output-format">Output format
-              <select id="tables-output-format" name="output_format" data-query>
-                <option value="json">JSON</option>
-                <option value="csv">CSV</option>
-                <option value="xlsx">Excel (XLSX)</option>
-                <option value="html">HTML</option>
-                <option value="markdown">Markdown</option>
-                <option value="image">Image</option>
-              </select>
-            </label>
-            <label class="field-label" for="tables-image-format">Image type
-              <select id="tables-image-format" name="image_format" data-query>
-                <option value="png">PNG</option>
-                <option value="jpeg">JPEG</option>
-              </select>
-            </label>
+        <!-- 9. Deskew PDF/Straighten PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <div class="field-row">
-            <label class="field-label">First page<input name="page_start" type="number" min="1" value="1" data-query></label>
-            <label class="field-label">Last page<input name="page_end" type="number" min="1" placeholder="Last page" data-query></label>
-            <label class="field-label">Table number(s)<input name="table_index" type="text" value="all" placeholder="all or 1,3" data-query></label>
-          </div>
-          <div class="field-row">
-            <label class="field-label">OCR
-              <select name="ocr" data-query>
+          <h3>9. Deskew PDF / Straighten PDF</h3>
+          <code class="endpoint">/api/v1/pdf/deskew</code>
+          <form data-endpoint="/api/v1/pdf/deskew" data-download="true">
+            <label class="field-label" for="deskew-file">PDF file</label>
+            <input id="deskew-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <label class="field-label" for="deskew-mode" style="margin-top:9px;">Deskew method
+              <select id="deskew-mode" name="deskew_mode">
                 <option value="auto">Automatic</option>
-                <option value="true">Always</option>
-                <option value="false">Never</option>
+                <option value="manual">Manual per page</option>
               </select>
             </label>
-            <label class="field-label">Merge tables
-              <select name="merge_tables" data-query>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
+            <input id="deskew-angles" name="manual_angles" type="hidden" data-form>
+            <p class="standalone-hint">Automatic mode corrects small skew. Use preview sliders for manual page rotation
+              from −180° to +180°.</p>
+            <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
+
+        <!-- 10. Searchable PDF -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
           </div>
-          <p class="standalone-hint">Scanned pages can be OCR'd automatically. JSON is shown in the response panel; other formats download as a file or ZIP.</p>
-          <button class="send-button" type="submit">Extract tables <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+          <h3>10. Searchable PDF</h3>
+          <code class="endpoint">/api/v1/pdf/make-searchable</code>
+          <form data-endpoint="/api/v1/pdf/make-searchable" data-download="true">
+            <label class="field-label" for="searchable-file">PDF file</label>
+            <input id="searchable-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label">OCR language(s) <span class="field-hint">e.g. auto, eng, eng+ben</span><input
+                  name="lang" type="text" placeholder="auto (auto-detect)" data-query></label>
+              <label class="field-label field-checkbox"><input name="force_ocr" type="checkbox" data-query> Force
+                OCR</label>
+              <label class="field-label field-checkbox"><input name="deskew" type="checkbox" data-query> Deskew</label>
+              <label class="field-label field-checkbox"><input name="auto_rotate" type="checkbox" data-query>
+                Auto-rotate</label>
+            </div>
+            <button class="send-button" type="submit">Make searchable <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card">
-        <div class="card-top">
-          <span class="operation-icon icon-green" aria-hidden="true">PPT</span>
-          <span class="method-badge">POST</span>
-        </div>
-        <h3>PowerPoint <span class="arrow">→</span> PDF</h3>
-        <code class="endpoint">/convert/pptx-to-pdf</code>
-        <form data-endpoint="/convert/pptx-to-pdf" data-download="true">
-          <label class="field-label" for="pptx-file">PPT / PPTX file</label>
-          <input id="pptx-file" name="file" type="file" accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" required>
-          <p class="field-hint standalone-hint">Requires LibreOffice on the server.</p>
-          <button class="send-button" type="submit">Convert to PDF <span aria-hidden="true">→</span></button>
-        </form>
-      </article>
+        <!-- 11. Remove Blank Pages -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
+          </div>
+          <h3>11. Remove Blank Pages</h3>
+          <code class="endpoint">/api/v1/pdf/remove-blank-pages</code>
+          <form data-endpoint="/api/v1/pdf/remove-blank-pages" data-download="true">
+            <label class="field-label" for="remove-blank-pages-file">PDF file</label>
+            <input id="remove-blank-pages-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label">Sensitivity threshold<input name="threshold" type="number" min="0" max="1"
+                  step="0.0001" placeholder="0.0005 (default)" data-query></label>
+            </div>
+            <p class="standalone-hint">Automatically detects and removes blank pages for both text and scanned PDFs
+              while preserving original content and quality.</p>
+            <button class="send-button" type="submit">Remove blank pages <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
 
-      <article class="operation-card health-card">
-        <div class="card-top">
-          <span class="operation-icon icon-green" aria-hidden="true">✓</span>
-          <span class="method-badge method-get">GET</span>
-        </div>
-        <h3>Conversion engine</h3>
-        <code class="endpoint">/convert/pptx-to-pdf/health</code>
-        <p class="health-copy">Check whether the PowerPoint-to-PDF conversion engine is available.</p>
-        <button class="send-button" type="button" data-get="/convert/pptx-to-pdf/health">Check engine <span aria-hidden="true">→</span></button>
-      </article>
+        <!-- 12. PDF Compare -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
+          </div>
+          <h3>12. PDF Compare</h3>
+          <code class="endpoint">/api/v1/compare-pdf</code>
+          <form data-endpoint="/api/v1/compare-pdf" data-download="true">
+            <label class="field-label" for="compare-original-file">Original / baseline PDF</label>
+            <input id="compare-original-file" name="original_pdf" type="file" accept=".pdf,application/pdf" required>
+            <label class="field-label" for="compare-new-file" style="margin-top:9px;">New / revised PDF</label>
+            <input id="compare-new-file" name="new_pdf" type="file" accept=".pdf,application/pdf" required>
+            <label class="field-label" for="compare-report-format" style="margin-top:9px;">Report format
+              <select id="compare-report-format" name="report_format" data-query>
+                <option value="pdf">PDF</option>
+                <option value="html">HTML</option>
+              </select>
+            </label>
+            <p class="standalone-hint">Compares text, visual content, and page structure, then downloads the selected
+              report.</p>
+            <button class="send-button" type="submit">Compare PDFs <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
+
+        <!-- 13. PDF Table Extractor -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
+          </div>
+          <h3>13. PDF Table Extractor</h3>
+          <code class="endpoint">/api/v1/pdf/extract-tables</code>
+          <form data-endpoint="/api/v1/pdf/extract-tables" data-download="true">
+            <label class="field-label" for="pdf-tables-file">PDF file</label>
+            <input id="pdf-tables-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label" for="tables-output-format">Output format
+                <select id="tables-output-format" name="output_format" data-query>
+                  <option value="json">JSON</option>
+                  <option value="csv">CSV</option>
+                  <option value="xlsx">Excel (XLSX)</option>
+                  <option value="html">HTML</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="image">Image</option>
+                </select>
+              </label>
+              <label class="field-label" for="tables-image-format">Image type
+                <select id="tables-image-format" name="image_format" data-query>
+                  <option value="png">PNG</option>
+                  <option value="jpeg">JPEG</option>
+                </select>
+              </label>
+            </div>
+            <div class="field-row">
+              <label class="field-label">First page<input name="page_start" type="number" min="1" value="1"
+                  data-query></label>
+              <label class="field-label">Last page<input name="page_end" type="number" min="1" placeholder="Last page"
+                  data-query></label>
+              <label class="field-label">Table number(s)<input name="table_index" type="text" value="all"
+                  placeholder="all or 1,3" data-query></label>
+            </div>
+            <div class="field-row">
+              <label class="field-label">OCR
+                <select name="ocr" data-query>
+                  <option value="auto">Automatic</option>
+                  <option value="true">Always</option>
+                  <option value="false">Never</option>
+                </select>
+              </label>
+              <label class="field-label">Merge tables
+                <select name="merge_tables" data-query>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+            </div>
+            <p class="standalone-hint">Scanned pages can be OCR'd automatically. JSON is shown in the response panel;
+              other formats download as a file or ZIP.</p>
+            <button class="send-button" type="submit">Extract tables <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
+
+        <!-- Additional Tools -->
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
+          </div>
+          <h3>PDF <span class="arrow">→</span> Auto-rotated PDF</h3>
+          <code class="endpoint">/api/v1/pdf/auto-rotate</code>
+          <form data-endpoint="/api/v1/pdf/auto-rotate" data-download="true">
+            <label class="field-label" for="auto-rotate-file">PDF file</label>
+            <input id="auto-rotate-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <p class="standalone-hint">Detects page orientation and corrects rotations of 0°, 90°, 180°, or 270°.</p>
+            <button class="send-button" type="submit">Auto-rotate PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
+
+        <article class="operation-card">
+          <div class="card-top">
+            <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+            <span class="method-badge">POST</span>
+          </div>
+          <h3>PDF <span class="arrow">→</span> Enhanced PDF</h3>
+          <code class="endpoint">/api/v1/pdf/enhance</code>
+          <form data-endpoint="/api/v1/pdf/enhance" data-download="true">
+            <label class="field-label" for="enhance-file">PDF file</label>
+            <input id="enhance-file" name="file" type="file" accept=".pdf,application/pdf" required>
+            <div class="field-row">
+              <label class="field-label field-checkbox"><input name="grayscale" type="checkbox" data-query>
+                Grayscale</label>
+              <label class="field-label">Contrast<input name="contrast" type="number" min="0.5" max="3" step="0.05"
+                  value="1.15" data-query></label>
+              <label class="field-label">Brightness<input name="brightness" type="number" min="0.5" max="2" step="0.05"
+                  value="1.05" data-query></label>
+            </div>
+            <div class="field-row">
+              <label class="field-label">Sharpen<input name="sharpen" type="number" min="0" max="2" step="0.1"
+                  value="0.3" data-query></label>
+              <label class="field-label field-checkbox"><input name="denoise" type="checkbox" data-query>
+                Denoise</label>
+              <label class="field-label field-checkbox"><input name="threshold" type="checkbox" data-query>
+                Threshold</label>
+              <label class="field-label field-checkbox"><input name="background_cleanup" type="checkbox" data-query>
+                Clean background</label>
+            </div>
+            <button class="send-button" type="submit">Enhance PDF <span aria-hidden="true">→</span></button>
+          </form>
+        </article>
+
+        <article class="operation-card health-card">
+          <div class="card-top">
+            <span class="operation-icon icon-green" aria-hidden="true">✓</span>
+            <span class="method-badge method-get">GET</span>
+          </div>
+          <h3>Conversion engine</h3>
+          <code class="endpoint">/convert/pptx-to-pdf/health</code>
+          <p class="health-copy">Check whether the PowerPoint-to-PDF conversion engine is available.</p>
+          <button class="send-button" type="button" data-get="/convert/pptx-to-pdf/health">Check engine <span
+              aria-hidden="true">→</span></button>
+        </article>
       </section>
     </div>
   </main>
-  <footer class="footer"><span>ConvertLab <span class="footer-muted">· API tester</span></span><span>Built for local development</span></footer>
+  <footer class="footer"><span>ConvertLab <span class="footer-muted">· API tester</span></span><span>Built for local
+      development</span></footer>
 </body>
+
 </html>
