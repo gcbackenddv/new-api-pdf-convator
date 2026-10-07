@@ -96,6 +96,8 @@ class FlattenSettings:
     flatten_forms: bool = True
     flatten_annotations: bool = True
     flatten_stamps: bool = True
+    full_flatten: bool = False
+    dpi: int = 150
 
     @classmethod
     def from_config(
@@ -103,6 +105,8 @@ class FlattenSettings:
         flatten_forms: bool = True,
         flatten_annotations: bool = True,
         flatten_stamps: bool = True,
+        full_flatten: bool = False,
+        dpi: int = 150,
     ) -> "FlattenSettings":
         return cls(
             output_root=config.OUTPUT_DIR / config.PDF_FLATTEN_DIRNAME,
@@ -114,6 +118,8 @@ class FlattenSettings:
             flatten_forms=flatten_forms,
             flatten_annotations=flatten_annotations,
             flatten_stamps=flatten_stamps,
+            full_flatten=full_flatten,
+            dpi=max(72, min(300, dpi)),
         )
 
 
@@ -256,7 +262,16 @@ def flatten_pdf(job: FlattenJob, settings: FlattenSettings) -> FlattenResult:
             _bake(doc, settings)
             _check_deadline(deadline)
             _strip_active_content(doc, settings, deadline)
-            _save(doc, job.output_path)
+
+            if settings.full_flatten:
+                # Render each page to an image and embed into a clean non-selectable PDF
+                flat_doc = _rasterize_to_flat_pdf(doc, settings, deadline)
+                try:
+                    _save(flat_doc, job.output_path)
+                finally:
+                    flat_doc.close()
+            else:
+                _save(doc, job.output_path)
         _verify_output(job.output_path, page_count, settings)
     except PDFFlattenError:
         _log(logging.WARNING, "pdf_flatten.failed", job_id=job.job_id)
@@ -429,6 +444,31 @@ def _strip_active_content(doc: pymupdf.Document, settings: FlattenSettings, dead
         catalog = doc.pdf_catalog()
         for key in _CATALOG_KEYS_TO_REMOVE:
             doc.xref_set_key(catalog, key, "null")
+
+
+def _rasterize_to_flat_pdf(
+    doc: pymupdf.Document, settings: FlattenSettings, deadline: float
+) -> pymupdf.Document:
+    """
+    Render every page to a high-resolution raster image and reconstruct a new PDF.
+    This produces a completely flattened PDF where text is 100% non-selectable and non-editable.
+    Page dimensions and orientations are preserved exactly.
+    """
+    flat_doc = pymupdf.open()
+    try:
+        for page_idx in range(doc.page_count):
+            _check_deadline(deadline)
+            orig_page = doc[page_idx]
+            pix = orig_page.get_pixmap(dpi=settings.dpi, alpha=False)
+            new_page = flat_doc.new_page(
+                width=orig_page.rect.width,
+                height=orig_page.rect.height,
+            )
+            new_page.insert_image(new_page.rect, pixmap=pix)
+        return flat_doc
+    except Exception:
+        flat_doc.close()
+        raise
 
 
 def _save(doc: pymupdf.Document, output_path: Path) -> None:
