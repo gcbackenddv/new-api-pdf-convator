@@ -47,7 +47,7 @@
           <p class="eyebrow">AVAILABLE ENDPOINTS</p>
           <h2>Choose an operation</h2>
         </div>
-        <span class="operation-count">09 FILE OPERATIONS</span>
+        <span class="operation-count">14 FILE OPERATIONS</span>
       </div>
 
       <article class="operation-card">
@@ -189,6 +189,102 @@
           <input id="pdf-flatten-file" name="file" type="file" accept=".pdf,application/pdf" required>
           <p class="standalone-hint">Makes supported form fields and annotations part of the page content without rasterizing pages. Signed PDFs are rejected because flattening invalidates their signatures.</p>
           <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Auto-rotated PDF</h3>
+        <code class="endpoint">/api/v1/pdf/auto-rotate</code>
+        <form data-endpoint="/api/v1/pdf/auto-rotate" data-download="true">
+          <label class="field-label" for="auto-rotate-file">PDF file</label>
+          <input id="auto-rotate-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <p class="standalone-hint">Detects page orientation and corrects rotations of 0°, 90°, 180°, or 270°.</p>
+          <button class="send-button" type="submit">Auto-rotate PDF <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>Compare two PDFs</h3>
+        <code class="endpoint">/api/v1/compare-pdf</code>
+        <form data-endpoint="/api/v1/compare-pdf" data-download="true">
+          <label class="field-label" for="compare-original-file">Original / baseline PDF</label>
+          <input id="compare-original-file" name="original_pdf" type="file" accept=".pdf,application/pdf" required>
+          <label class="field-label" for="compare-new-file">New / revised PDF</label>
+          <input id="compare-new-file" name="new_pdf" type="file" accept=".pdf,application/pdf" required>
+          <label class="field-label" for="compare-report-format">Report format
+            <select id="compare-report-format" name="report_format" data-query>
+              <option value="pdf">PDF</option>
+              <option value="html">HTML</option>
+            </select>
+          </label>
+          <p class="standalone-hint">Compares text, visual content, and page structure, then downloads the selected report.</p>
+          <button class="send-button" type="submit">Compare PDFs <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Deskewed PDF</h3>
+        <code class="endpoint">/api/v1/pdf/deskew</code>
+        <form data-endpoint="/api/v1/pdf/deskew" data-download="true">
+          <label class="field-label" for="deskew-file">PDF file</label>
+          <input id="deskew-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <p class="standalone-hint">Automatically straightens skewed pages in the uploaded PDF.</p>
+          <button class="send-button" type="submit">Deskew PDF <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Enhanced PDF</h3>
+        <code class="endpoint">/api/v1/pdf/enhance</code>
+        <form data-endpoint="/api/v1/pdf/enhance" data-download="true">
+          <label class="field-label" for="enhance-file">PDF file</label>
+          <input id="enhance-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <div class="field-row">
+            <label class="field-label field-checkbox"><input name="grayscale" type="checkbox" data-query> Grayscale</label>
+            <label class="field-label">Contrast<input name="contrast" type="number" min="0.5" max="3" step="0.05" value="1.15" data-query></label>
+            <label class="field-label">Brightness<input name="brightness" type="number" min="0.5" max="2" step="0.05" value="1.05" data-query></label>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Sharpen<input name="sharpen" type="number" min="0" max="2" step="0.1" value="0.3" data-query></label>
+            <label class="field-label field-checkbox"><input name="denoise" type="checkbox" data-query> Denoise</label>
+            <label class="field-label field-checkbox"><input name="threshold" type="checkbox" data-query> Threshold</label>
+            <label class="field-label field-checkbox"><input name="background_cleanup" type="checkbox" data-query> Clean background</label>
+          </div>
+          <button class="send-button" type="submit">Enhance PDF <span aria-hidden="true">→</span></button>
+        </form>
+      </article>
+
+      <article class="operation-card">
+        <div class="card-top">
+          <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
+          <span class="method-badge">POST</span>
+        </div>
+        <h3>PDF <span class="arrow">→</span> Searchable PDF (OCR)</h3>
+        <code class="endpoint">/api/v1/pdf/make-searchable</code>
+        <form data-endpoint="/api/v1/pdf/make-searchable" data-download="true">
+          <label class="field-label" for="searchable-file">PDF file</label>
+          <input id="searchable-file" name="file" type="file" accept=".pdf,application/pdf" required>
+          <div class="field-row">
+            <label class="field-label">OCR language(s) <span class="field-hint">Optional, e.g. eng+ben</span><input name="lang" type="text" placeholder="Server default" data-query></label>
+            <label class="field-label field-checkbox"><input name="force_ocr" type="checkbox" data-query> Force OCR on all pages</label>
+          </div>
+          <button class="send-button" type="submit">Make searchable <span aria-hidden="true">→</span></button>
         </form>
       </article>
 
