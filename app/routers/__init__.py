@@ -7,12 +7,13 @@ from app.routers import (
     pdf_extract_images,
     pdf_extract_tables,
     pdf_flatten,
+    pdf_remove_blank_pages,
+    pdf_repair,
     pdf_searchable,
     pdf_to_heic,
     pdf_to_long_image,
     pdf_to_pptx,
     pptx_to_pdf,
-
 )
 
 __all__ = [
@@ -24,6 +25,8 @@ __all__ = [
     "pdf_extract_images",
     "pdf_extract_tables",
     "pdf_flatten",
+    "pdf_remove_blank_pages",
+    "pdf_repair",
     "pdf_searchable",
     "pdf_to_heic",
     "pdf_to_long_image",
