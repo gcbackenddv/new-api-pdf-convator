@@ -93,10 +93,17 @@ class FlattenSettings:
     max_pages: int
     job_ttl_seconds: int
     allow_signed: bool
-    flatten_annotations: bool
+    flatten_forms: bool = True
+    flatten_annotations: bool = True
+    flatten_stamps: bool = True
 
     @classmethod
-    def from_config(cls) -> "FlattenSettings":
+    def from_config(
+        cls,
+        flatten_forms: bool = True,
+        flatten_annotations: bool = True,
+        flatten_stamps: bool = True,
+    ) -> "FlattenSettings":
         return cls(
             output_root=config.OUTPUT_DIR / config.PDF_FLATTEN_DIRNAME,
             max_pdf_bytes=config.MAX_PDF_SIZE_MB * MIB,
@@ -104,7 +111,9 @@ class FlattenSettings:
             max_pages=config.PDF_FLATTEN_MAX_PAGES,
             job_ttl_seconds=config.PDF_FLATTEN_JOB_TTL_SECONDS,
             allow_signed=config.PDF_FLATTEN_ALLOW_SIGNED,
-            flatten_annotations=config.PDF_FLATTEN_ANNOTATIONS,
+            flatten_forms=flatten_forms,
+            flatten_annotations=flatten_annotations,
+            flatten_stamps=flatten_stamps,
         )
 
 
@@ -130,7 +139,8 @@ class FlattenResult:
     output_path: Path
     page_count: int
     form_fields: int           # widgets found before flattening
-    annotations: int           # non-link, non-widget annotations found
+    annotations: int           # general annotations found
+    stamps: int                # stamp annotations found
     was_signed: bool           # True only when allow_signed let it through
     output_size_bytes: int
 
@@ -238,16 +248,16 @@ def flatten_pdf(job: FlattenJob, settings: FlattenSettings) -> FlattenResult:
                     "The PDF is digitally signed; flattening would invalidate the signature."
                 )
 
-            fields, annots = _count_interactive(doc, deadline)
+            fields, annots, stamps = _count_interactive(doc, deadline)
             _log(logging.INFO, "pdf_flatten.detected", job_id=job.job_id,
-                 form_fields=fields, annotations=annots, signed=signed)
+                 form_fields=fields, annotations=annots, stamps=stamps, signed=signed)
 
             _refresh_widget_appearances(doc, deadline)
             _bake(doc, settings)
             _check_deadline(deadline)
-            _strip_active_content(doc, deadline)
+            _strip_active_content(doc, settings, deadline)
             _save(doc, job.output_path)
-        _verify_output(job.output_path, page_count)
+        _verify_output(job.output_path, page_count, settings)
     except PDFFlattenError:
         _log(logging.WARNING, "pdf_flatten.failed", job_id=job.job_id)
         raise
@@ -260,12 +270,13 @@ def flatten_pdf(job: FlattenJob, settings: FlattenSettings) -> FlattenResult:
 
     size = job.output_path.stat().st_size
     _log(logging.INFO, "pdf_flatten.completed", job_id=job.job_id, form_fields=fields,
-         annotations=annots, output_bytes=size, seconds=f"{time.monotonic() - started:.2f}")
+         annotations=annots, stamps=stamps, output_bytes=size, seconds=f"{time.monotonic() - started:.2f}")
     return FlattenResult(
         output_path=job.output_path,
         page_count=page_count,
         form_fields=fields,
         annotations=annots,
+        stamps=stamps,
         was_signed=signed,
         output_size_bytes=size,
     )
@@ -314,13 +325,19 @@ def _has_signature(doc: pymupdf.Document, deadline: float) -> bool:
     return False
 
 
-def _count_interactive(doc: pymupdf.Document, deadline: float) -> tuple[int, int]:
-    fields = annots = 0
+def _count_interactive(doc: pymupdf.Document, deadline: float) -> tuple[int, int, int]:
+    """Returns (form_fields_count, general_annots_count, stamps_count)."""
+    fields = annots = stamps = 0
     for page in doc:
         _check_deadline(deadline)
         fields += sum(1 for _ in page.widgets())
-        annots += sum(1 for a in page.annots() if a.type[0] not in _UNCOUNTED_ANNOT_TYPES)
-    return fields, annots
+        for a in page.annots():
+            atype = a.type[0]
+            if atype == pymupdf.PDF_ANNOT_STAMP:
+                stamps += 1
+            elif atype not in _UNCOUNTED_ANNOT_TYPES:
+                annots += 1
+    return fields, annots, stamps
 
 
 def _refresh_widget_appearances(doc: pymupdf.Document, deadline: float) -> None:
@@ -344,12 +361,57 @@ def _refresh_widget_appearances(doc: pymupdf.Document, deadline: float) -> None:
 
 
 def _bake(doc: pymupdf.Document, settings: FlattenSettings) -> None:
-    """Merge widgets (and optionally annotations) into page content."""
-    doc.bake(annots=settings.flatten_annotations, widgets=True)
+    """Merge widgets, general annotations, and/or stamps into page content."""
+    # Case 1: Both general annotations and stamps should be flattened (or kept) together
+    if settings.flatten_annotations == settings.flatten_stamps:
+        doc.bake(annots=settings.flatten_annotations, widgets=settings.flatten_forms)
+        return
+
+    # Case 2: Granular annotation baking
+    # Either bake general annotations while keeping stamps, or bake stamps while keeping general annotations.
+    for page in doc:
+        annots_to_bake = []
+        annots_to_keep = []
+        for a in page.annots():
+            if a.type[0] in _UNCOUNTED_ANNOT_TYPES:
+                continue
+            is_stamp = (a.type[0] == pymupdf.PDF_ANNOT_STAMP)
+            should_bake = settings.flatten_stamps if is_stamp else settings.flatten_annotations
+            if should_bake:
+                annots_to_bake.append(a)
+            else:
+                annots_to_keep.append(a)
+
+        if settings.flatten_stamps and not settings.flatten_annotations:
+            # Bake stamps individually by rendering their appearance into page images
+            for stamp in annots_to_bake:
+                try:
+                    rect = stamp.rect
+                    pix = stamp.get_pixmap(dpi=150)
+                    page.delete_annot(stamp)
+                    page.insert_image(rect, pixmap=pix)
+                except Exception as exc:
+                    logger.debug("Failed baking stamp individually: %s", exc)
+
+        elif settings.flatten_annotations and not settings.flatten_stamps:
+            # Flatten general annotations but temporarily hide stamps from /Annots array
+            kept_xrefs = [f"{a.xref} 0 R" for a in annots_to_keep]
+            baked_xrefs = [f"{a.xref} 0 R" for a in annots_to_bake]
+            all_xrefs = kept_xrefs + baked_xrefs
+            if baked_xrefs:
+                # Set /Annots array to only contain the items we want baked
+                doc.xref_set_key(page.xref, "Annots", f"[{' '.join(baked_xrefs)}]")
+                doc.bake(annots=True, widgets=False)
+                # Re-attach kept annotations (e.g. stamps)
+                doc.xref_set_key(page.xref, "Annots", f"[{' '.join(kept_xrefs)}]")
+
+    # Finally bake form fields if requested
+    if settings.flatten_forms:
+        doc.bake(annots=False, widgets=True)
 
 
-def _strip_active_content(doc: pymupdf.Document, deadline: float) -> None:
-    """Remove JavaScript, auto-actions and the AcroForm. Fails closed on errors."""
+def _strip_active_content(doc: pymupdf.Document, settings: FlattenSettings, deadline: float) -> None:
+    """Remove JavaScript, auto-actions and the AcroForm (when forms are flattened)."""
     for page in doc:
         _check_deadline(deadline)
         doc.xref_set_key(page.xref, "AA", "null")
@@ -360,28 +422,30 @@ def _strip_active_content(doc: pymupdf.Document, deadline: float) -> None:
     doc.scrub(
         attached_files=False, clean_pages=False, embedded_files=False, hidden_text=False,
         javascript=True, metadata=False, redactions=False, redact_images=0,
-        remove_links=False, reset_fields=False,   # reset_fields would wipe form values
+        remove_links=False, reset_fields=False,
         reset_responses=False, thumbnails=False, xml_metadata=False,
     )
-    catalog = doc.pdf_catalog()
-    for key in _CATALOG_KEYS_TO_REMOVE:
-        doc.xref_set_key(catalog, key, "null")
+    if settings.flatten_forms:
+        catalog = doc.pdf_catalog()
+        for key in _CATALOG_KEYS_TO_REMOVE:
+            doc.xref_set_key(catalog, key, "null")
 
 
 def _save(doc: pymupdf.Document, output_path: Path) -> None:
     doc.save(str(output_path), garbage=3, deflate=True)
 
 
-def _verify_output(path: Path, expected_pages: int) -> None:
-    """Reopen the result and confirm it is valid and non-interactive."""
+def _verify_output(path: Path, expected_pages: int, settings: FlattenSettings) -> None:
+    """Reopen the result and confirm it is valid and non-interactive where expected."""
     try:
         with pymupdf.open(str(path), filetype="pdf") as out:
             if out.needs_pass or not out.is_pdf or out.page_count != expected_pages:
                 raise PDFFlattenError("Unable to flatten the uploaded PDF.")
-            if any(page.first_widget for page in out):
-                raise PDFFlattenError("Unable to flatten the uploaded PDF.")
-            if out.xref_get_key(out.pdf_catalog(), "AcroForm")[0] != "null":
-                raise PDFFlattenError("Unable to flatten the uploaded PDF.")
+            if settings.flatten_forms:
+                if any(page.first_widget for page in out):
+                    raise PDFFlattenError("Unable to flatten the uploaded PDF.")
+                if out.xref_get_key(out.pdf_catalog(), "AcroForm")[0] != "null":
+                    raise PDFFlattenError("Unable to flatten the uploaded PDF.")
     except PDFFlattenError:
         raise
     except Exception as exc:
