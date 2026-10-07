@@ -54,7 +54,7 @@ def detect_skew(img: Image.Image, *, max_angle: float = 15.0) -> Tuple[float, fl
     return median, confidence
 
 
-def deskew_image(img: Image.Image, angle: float) -> Image.Image:
+def deskew_image(img: Image.Image, angle: float, *, expand: bool = False) -> Image.Image:
     if abs(angle) < 0.1:
         return img
-    return img.rotate(-angle, expand=False, fillcolor="white" if img.mode == "RGB" else 255)
+    return img.rotate(-angle, expand=expand, fillcolor="white" if img.mode == "RGB" else 255)
