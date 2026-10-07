@@ -24,7 +24,7 @@ async function sendRequest(url, options = {}, download = false) {
     const response = await fetch(url, options);
     const contentType = response.headers.get("content-type") || "";
 
-    if (download && response.ok && !contentType.includes("json")) {
+    if (download && response.ok) {
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -43,7 +43,7 @@ async function sendRequest(url, options = {}, download = false) {
         : extractedImageCount !== null
           ? `extracted-images${formatSuffix}.zip`
           : tableCount !== null
-            ? "extracted-tables"
+            ? `extracted-tables${contentType.includes("json") ? ".json" : ""}`
           : "download";
       link.download = filenameFromResponse(response, defaultName);
       document.body.append(link);
