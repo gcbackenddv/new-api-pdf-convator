@@ -68,9 +68,9 @@ async def deskew_endpoint(
     file: UploadFile = File(...),
     manual_angle: float | None = Query(
         None,
-        ge=-15,
-        le=15,
-        description="Manual clockwise rotation in degrees; omitted for automatic deskew.",
+        ge=-180,
+        le=180,
+        description="Manual clockwise rotation in degrees (-180 to 180); omitted for automatic deskew.",
     ),
     manual_angles_json: str | None = Form(
         None,
@@ -101,13 +101,13 @@ async def deskew_endpoint(
                 or any(
                     isinstance(angle, bool)
                     or not isinstance(angle, (int, float))
-                    or not -15 <= angle <= 15
+                    or not -180 <= angle <= 180
                     for angle in parsed_angles
                 )
             ):
                 raise HTTPException(
                     422,
-                    "manual_angles must be an array of numbers between -15 and 15.",
+                    "manual_angles must be an array of numbers between -180 and 180.",
                 )
             page_count = validate_pdf(src)
             if len(parsed_angles) != page_count:
