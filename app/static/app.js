@@ -37,6 +37,8 @@ async function sendRequest(url, options = {}, download = false) {
       const tableCount = response.headers.get("x-table-count");
       const extractionWarnings = response.headers.get("x-extraction-warnings");
       const ocrPages = response.headers.get("x-ocr-pages");
+      const ocrWords = response.headers.get("x-ocr-words");
+      const ocrPagesSkipped = response.headers.get("x-ocr-pages-skipped");
       const formatSuffix = outputFormat && outputFormat !== "original" ? `-${outputFormat}` : "";
       const defaultName = flattenFormFields !== null
         ? "flattened-document.pdf"
@@ -58,8 +60,12 @@ async function sendRequest(url, options = {}, download = false) {
       const tableMessage = tableCount === null
         ? null
         : `Extracted ${tableCount} table${tableCount === "1" ? "" : "s"}${extractionWarnings && extractionWarnings !== "0" ? ` with ${extractionWarnings} warning${extractionWarnings === "1" ? "" : "s"}` : ""}${ocrPages ? `. OCR used on page${ocrPages.includes(",") ? "s" : ""} ${ocrPages}` : ""}. Your download has started.`;
+      const searchableMessage = ocrWords === null
+        ? null
+        : `Searchable PDF created. OCR recognized ${Number(ocrWords).toLocaleString()} words across ${ocrPages || "0"} page${ocrPages === "1" ? "" : "s"}${ocrPagesSkipped && ocrPagesSkipped !== "0" ? `; skipped ${ocrPagesSkipped} page${ocrPagesSkipped === "1" ? "" : "s"} that already had text` : ""}. Your download has started.`;
       const downloadMessage = flattenMessage
         || tableMessage
+        || searchableMessage
         || (extractedImageCount === null
           ? "Conversion complete. Your file download has started."
           : `Extracted ${extractedImageCount} embedded image${extractedImageCount === "1" ? "" : "s"}${outputFormat ? ` as ${outputFormat}` : ""}. Your download has started.`);
@@ -391,15 +397,15 @@ deskewFileInput.addEventListener("change", async () => {
       label.className = "field-label";
       const output = document.createElement("output");
       output.textContent = "0.0°";
-      label.append(`Clockwise angle: `, output);
+      label.append(`Rotation angle: `, output);
       const slider = document.createElement("input");
       slider.type = "range";
-      slider.min = "-15";
-      slider.max = "15";
-      slider.step = "0.1";
+      slider.min = "-180";
+      slider.max = "180";
+      slider.step = "1";
       slider.value = "0";
       slider.disabled = false;
-      slider.setAttribute("aria-label", `Rotation angle for page ${page}`);
+      slider.setAttribute("aria-label", `Rotation angle for page ${page}, from minus 180 to plus 180 degrees`);
       slider.addEventListener("input", () => {
         deskewMode.value = "manual";
         updateDeskewMode();
