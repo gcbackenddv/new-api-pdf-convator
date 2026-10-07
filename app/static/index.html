@@ -225,7 +225,11 @@
             <label class="field-label field-checkbox"><input name="flatten_annotations" type="checkbox" checked data-form> Flatten Annotations</label>
             <label class="field-label field-checkbox"><input name="flatten_stamps" type="checkbox" checked data-form> Flatten Stamps</label>
           </div>
-          <p class="standalone-hint">Permanently merges form fields, annotations, and stamps into the page appearance without rasterizing to images. Real text and vectors are preserved.</p>
+          <div class="field-row">
+            <label class="field-label field-checkbox" style="font-weight:600;"><input name="full_flatten" type="checkbox" data-form> Full PDF Flatten (Non-selectable & Non-editable)</label>
+            <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150" data-form></label>
+          </div>
+          <p class="standalone-hint">Standard mode merges interactive fields into permanent vectors/text. <strong>Full PDF Flatten</strong> rasterizes pages so that all text and elements become completely non-selectable and non-copyable.</p>
           <button class="send-button" type="submit">Flatten PDF <span aria-hidden="true">→</span></button>
         </form>
       </article>
