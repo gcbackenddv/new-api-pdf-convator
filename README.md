@@ -4,6 +4,41 @@ A FastAPI-based file conversion service supporting PDF, HEIC, Images, and PowerP
 
 ## System Prerequisites
 
+### Tesseract OCR (Required for searchable PDFs and scanned-document OCR)
+Install Tesseract and the language data you request. The default OCR language is
+`eng+ben`, so both English and Bengali trained data are required for the default.
+
+- **Ubuntu / Debian**:
+  ```bash
+  sudo apt update
+  sudo apt install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ben fonts-noto-core
+  ```
+  Run these commands on the same host or inside the same container that runs
+  Uvicorn, then verify the executable and language data:
+  ```bash
+  tesseract --version
+  tesseract --list-langs
+  ```
+  The language list must include `eng` for requests using `lang=eng`. The
+  default `OCR_LANGUAGE=eng+ben` requires both `eng` and `ben`. Restart the API
+  process after installing Tesseract so it uses the updated server environment.
+
+- **macOS**:
+  ```bash
+  brew install tesseract
+  ```
+  Install the requested `.traineddata` language files if they are not included
+  by your Tesseract package.
+
+- **Windows**: Install Tesseract OCR and make sure `tesseract.exe` is on `PATH`.
+  Install the `.traineddata` files for the requested languages.
+
+The `pytesseract` Python package alone does not install the Tesseract executable
+or its language data. The searchable-PDF endpoint reports an error instead of
+returning an unchanged PDF when OCR is unavailable or recognizes no text. For
+languages needing a non-Latin font, install a compatible font or set
+`OCR_FONT_PATH` to a TrueType font that contains the recognized script.
+
 ### LibreOffice (Required for PPT/PPTX -> PDF)
 Converting PowerPoint files (`.ppt` and `.pptx`) to PDF uses LibreOffice in headless mode. LibreOffice must be installed on the host system:
 
