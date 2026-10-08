@@ -28,3 +28,40 @@ def test_output_uses_uploaded_name_and_is_saved(tmp_path, monkeypatch):
     saved_files = list(tmp_path.glob("presentation_converted-*.zip"))
     assert len(saved_files) == 1
     assert saved_files[0].read_bytes() == b"zip-data"
+
+
+def test_pdf_to_heic_real_conversion(tmp_path, monkeypatch):
+    import io
+    import zipfile
+    import pymupdf as fitz
+
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    # Generate multi-page PDF in memory
+    doc = fitz.open()
+    for i in range(3):
+        p = doc.new_page(width=300, height=400)
+        p.insert_text((30, 50), f"Test Page {i + 1}", fontsize=12)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-heic",
+        params={"dpi": 72, "quality": 75},
+        files={"file": ("sample.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert "sample_converted.zip" in response.headers["content-disposition"]
+
+    # Verify zip content
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+        namelist = zf.namelist()
+        assert len(namelist) == 3
+        assert "page-001.heic" in namelist
+        assert "page-002.heic" in namelist
+        assert "page-003.heic" in namelist
+        # Verify non-empty HEIC data
+        assert len(zf.read("page-001.heic")) > 100
+
