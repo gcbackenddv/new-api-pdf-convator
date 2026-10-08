@@ -424,3 +424,85 @@ def test_clipped_image_handling(tmp_path, monkeypatch):
     assert len(pictures) >= 1
 
 
+def test_calculate_optimal_dpi():
+    """Verifies automatic DPI calculation for high quality across various page content."""
+    from app.services.pdf_to_pptx.coordinates import calculate_optimal_dpi
+
+    doc = fitz.open()
+
+    # 1. Plain digital text page -> high quality baseline (200 DPI)
+    p1 = doc.new_page(width=600, height=800)
+    p1.insert_text((50, 50), "Sample Text")
+    dpi1 = calculate_optimal_dpi(p1)
+    assert dpi1 >= 200
+
+    # 2. Vector drawings page -> 240 or 300 DPI for crisp vector rendering
+    p2 = doc.new_page(width=600, height=800)
+    for i in range(5):
+        p2.draw_line(fitz.Point(10 * i, 10), fitz.Point(100, 10 * i))
+    dpi2 = calculate_optimal_dpi(p2)
+    assert dpi2 >= 240
+
+    # 3. High-res embedded image -> matches image DPI up to 300
+    p3 = doc.new_page(width=720, height=405)
+    img_bytes = _make_dummy_image_bytes(width=1500, height=1000)
+    # Bbox is 360 x 240 pt (5 x 3.33 in). 1500 px / 5 in = 300 DPI
+    p3.insert_image(fitz.Rect(50, 50, 410, 290), stream=img_bytes)
+    dpi3 = calculate_optimal_dpi(p3)
+    assert dpi3 == 300
+
+    # 4. Explicit target_dpi takes precedence
+    dpi_explicit = calculate_optimal_dpi(p3, target_dpi=180)
+    assert dpi_explicit == 180
+
+    # 5. Memory ceiling clamp prevents OOM on large pages
+    # Force max_pixels very low (e.g. 500,000 px)
+    dpi_clamped = calculate_optimal_dpi(p3, max_pixels=500_000)
+    assert dpi_clamped < 200
+
+    doc.close()
+
+
+def test_conversion_with_auto_dpi(tmp_path, monkeypatch):
+    """Verifies conversion with dpi=0 triggers automatic optimal DPI calculation."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    doc = fitz.open()
+    p = doc.new_page(width=720, height=405)
+    p.insert_text((100, 100), "Auto DPI Slide Test", fontsize=24)
+    p.draw_rect(fitz.Rect(50, 50, 670, 355), color=(0, 0, 1), width=2)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-pptx?dpi=0",
+        files={"file": ("auto_dpi.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    assert len(prs.slides) == 1
+    slide = prs.slides[0]
+    assert len(slide.shapes) >= 1
+
+
+def test_conversion_with_omitted_dpi_uses_auto(tmp_path, monkeypatch):
+    """Verifies that omitting the dpi parameter (e.g. ?ocr=true) converts cleanly with auto DPI."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    doc = fitz.open()
+    p = doc.new_page(width=720, height=405)
+    p.insert_text((100, 100), "No DPI Query Param Test", fontsize=24)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    # Omit dpi query param entirely, matching frontend behavior
+    response = client.post(
+        "/convert/pdf-to-pptx?ocr=true",
+        files={"file": ("no_dpi.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    assert len(prs.slides) == 1
+    assert "No DPI Query Param Test" in prs.slides[0].shapes[0].text_frame.text
