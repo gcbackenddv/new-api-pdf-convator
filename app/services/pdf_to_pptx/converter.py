@@ -10,7 +10,6 @@ from PIL import Image
 from pptx import Presentation
 
 from app.services.pdf_to_pptx.coordinates import SlideGeometry
-from app.services.pdf_to_pptx.fonts import normalize_font_name
 from app.services.pdf_to_pptx.images import extract_and_add_images
 from app.services.pdf_to_pptx.ocr import is_scanned_page, perform_ocr_on_page
 from app.services.pdf_to_pptx.shapes import extract_and_add_shapes
@@ -52,7 +51,7 @@ def _render_page_fallback(
     image_format: str = "jpeg",
     quality: int = 90,
 ) -> None:
-    """Render full page as an image fallback when native objects cannot be represented."""
+    """Renders full page as an image fallback when native objects cannot be represented."""
     rect = page.rect
     zoom = dpi / 72.0
     pixels = (rect.width * zoom) * (rect.height * zoom)
@@ -76,8 +75,8 @@ def _render_page_fallback(
     buf.close()
 
 
-def validate_pptx_output(output_path: Path, expected_slides: int) -> None:
-    """Validate that the generated PPTX file exists, is readable, and has expected slides."""
+def validate_pptx_output(output_path: Path, expected_slides: int, doc: fitz.Document | None = None) -> None:
+    """Validates that the generated PPTX file exists, is readable, matches slide count, and has valid content."""
     if not output_path.exists():
         raise PdfToPptxError("PPTX output file was not created.", 500)
 
@@ -94,6 +93,25 @@ def validate_pptx_output(output_path: Path, expected_slides: int) -> None:
                 actual_slides,
             )
             raise PdfToPptxError("PPTX validation failed: slide count mismatch.", 500)
+
+        # Check for unexpected blank slides when PDF page had content
+        if doc is not None and len(doc) == actual_slides:
+            for s_idx, slide in enumerate(prs.slides):
+                p = doc[s_idx]
+                has_pdf_content = (
+                    len(p.get_text().strip()) > 0
+                    or len(p.get_drawings()) > 0
+                    or len(p.get_images()) > 0
+                )
+                if has_pdf_content and len(slide.shapes) == 0:
+                    # If slide has a native background fill, it's not completely blank
+                    has_bg = False
+                    try:
+                        has_bg = slide.background.fill.type is not None
+                    except Exception:
+                        pass
+                    if not has_bg:
+                        logger.warning("Slide %d is unexpectedly blank despite PDF having content", s_idx + 1)
     except PdfToPptxError:
         raise
     except Exception as exc:
@@ -117,10 +135,10 @@ def convert_pdf_to_pptx(
     extract_shapes: bool = True,
     detect_tables: bool = True,
 ) -> PdfToPptxResult:
-    """Converts a PDF into an editable PowerPoint presentation.
+    """Converts a PDF into a production-grade editable PowerPoint presentation.
 
     Preserves text boxes, fonts, sizes, colors, styles, separate images,
-    native vector shapes, and tables with z-order and slide geometry.
+    native vector shapes, and tables with z-order layering and slide geometry.
     """
     started = time.perf_counter()
     _ensure_pdf_header(pdf_path)
@@ -182,10 +200,10 @@ def convert_pdf_to_pptx(
                 logger.exception("Loading page %d failed", index + 1)
                 raise PdfToPptxError("Invalid or corrupted PDF.", 422) from exc
 
-            page_geom = SlideGeometry.from_page_rect(rect)
+            page_geom = SlideGeometry.for_page(rect, base_geom.slide_width, base_geom.slide_height)
             slide = prs.slides.add_slide(blank_layout)
 
-            # Check if page is scanned
+            # Check if page is genuinely scanned (0 text, 0 drawings, dominated by raster image)
             scanned = is_scanned_page(page)
             if scanned:
                 ocr_success = False
@@ -215,7 +233,7 @@ def convert_pdf_to_pptx(
                 continue
 
             # Digital page: Extract native elements with proper Z-Order
-            # Hierarchy: Shapes (background/lines) -> Images -> Tables -> Text
+            # Layering: Background -> Tables -> Shapes (lines, rectangles, vectors) -> Images -> Text
             try:
                 table_rects: list[fitz.Rect] = []
                 if detect_tables:
@@ -226,12 +244,12 @@ def convert_pdf_to_pptx(
                 shapes_count = 0
                 if extract_shapes:
                     shapes_count = extract_and_add_shapes(
-                        page, slide, page_geom, excluded_rects=table_rects
+                        page, slide, page_geom, excluded_rects=table_rects, dpi=dpi
                     )
 
                 images_count = 0
                 if extract_images:
-                    images_count = extract_and_add_images(doc, page, slide, page_geom)
+                    images_count = extract_and_add_images(doc, page, slide, page_geom, dpi=dpi)
 
                 text_count = extract_and_add_text(
                     page,
@@ -287,13 +305,13 @@ def convert_pdf_to_pptx(
                     quality=jpeg_quality,
                 )
 
-    try:
-        prs.save(output_path)
-    except Exception as exc:
-        logger.exception("Saving PPTX failed")
-        raise PdfToPptxError("Unable to convert PDF to PowerPoint.", 500) from exc
+        try:
+            prs.save(output_path)
+        except Exception as exc:
+            logger.exception("Saving PPTX failed")
+            raise PdfToPptxError("Unable to convert PDF to PowerPoint.", 500) from exc
 
-    validate_pptx_output(output_path, total)
+        validate_pptx_output(output_path, total, doc)
 
     size = output_path.stat().st_size
     duration = time.perf_counter() - started
