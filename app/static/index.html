@@ -89,24 +89,8 @@
             <p class="eyebrow">AVAILABLE ENDPOINTS</p>
             <h2>Choose an operation</h2>
           </div>
-          <span class="operation-count">13 CORE OPERATIONS</span>
+          <span class="operation-count">15 CORE OPERATIONS</span>
         </div>
-
-        <!-- Drag and drop option (commented out)
-      <div class="drop-zone">
-        <input id="example-file" name="file" type="file" accept=".pdf,application/pdf" required class="drop-zone-input">
-        <div class="drop-zone-prompt">
-          <svg class="drop-zone-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div class="drop-zone-text"><strong>Drag & drop PDF here</strong> or <span>browse</span></div>
-        </div>
-        <div class="drop-zone-file-info" hidden>
-          <span class="drop-zone-file-badge">PDF</span>
-          <span class="drop-zone-filename"></span>
-          <span class="drop-zone-filesize"></span>
-          <span class="drop-zone-replace-hint">Click or drop to replace</span>
-        </div>
-      </div>
-      -->
 
         <!-- 1. PDF to Long Image -->
         <article class="operation-card">
@@ -169,10 +153,8 @@
             <label class="field-label" for="pdf-pptx-file">PDF file</label>
             <input id="pdf-pptx-file" name="file" type="file" accept=".pdf,application/pdf" required>
             <div class="field-row">
-              <label class="field-label">DPI<input name="dpi" type="number" min="72" max="300" value="150"
-                  data-query></label>
-              <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable
-                OCR</label>
+              <label class="field-label">DPI <span class="field-hint">(auto if blank)</span><input name="dpi" type="number" min="72" max="600" placeholder="Auto" data-query></label>
+              <label class="field-label field-checkbox"><input name="ocr" type="checkbox" checked data-query> Enable OCR</label>
             </div>
             <button class="send-button" type="submit">Convert to PowerPoint <span aria-hidden="true">→</span></button>
           </form>
@@ -464,13 +446,13 @@
           </form>
         </article>
 
-        <!-- Additional Tools -->
+        <!-- 14. Auto-rotate PDF -->
         <article class="operation-card">
           <div class="card-top">
             <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
             <span class="method-badge">POST</span>
           </div>
-          <h3>PDF <span class="arrow">→</span> Auto-rotated PDF</h3>
+          <h3>14. Auto-rotate PDF</h3>
           <code class="endpoint">/api/v1/pdf/auto-rotate</code>
           <form data-endpoint="/api/v1/pdf/auto-rotate" data-download="true">
             <label class="field-label" for="auto-rotate-file">PDF file</label>
@@ -480,12 +462,13 @@
           </form>
         </article>
 
+        <!-- 15. Enhance PDF -->
         <article class="operation-card">
           <div class="card-top">
             <span class="operation-icon icon-blue" aria-hidden="true">PDF</span>
             <span class="method-badge">POST</span>
           </div>
-          <h3>PDF <span class="arrow">→</span> Enhanced PDF</h3>
+          <h3>15. Enhance PDF</h3>
           <code class="endpoint">/api/v1/pdf/enhance</code>
           <form data-endpoint="/api/v1/pdf/enhance" data-download="true">
             <label class="field-label" for="enhance-file">PDF file</label>
