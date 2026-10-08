@@ -20,8 +20,8 @@ MIN_ROWS = 2
 MIN_COLUMNS = 2
 MAX_HEADER_ROWS = 3
 LATTICE_MIN_NONEMPTY_CELLS = 2
-STREAM_MIN_FILL_RATIO = 0.4
-STREAM_MAX_AVG_CELL_CHARS = 80
+STREAM_MIN_FILL_RATIO = 0.20
+STREAM_MAX_AVG_CELL_CHARS = 200
 SAME_LINE_FACTOR = 0.6
 
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffe\uffff]")
@@ -30,7 +30,8 @@ _NUMERIC_RE = re.compile(r"^[\s(\-+]*[$€£৳₹]?\s*\d[\d,.\s]*%?\)?\s*$")
 
 
 def clean_text(text: str) -> str:
-    """Strip control characters (XLSX rejects them); keep ZWJ/ZWNJ, which Bengali needs."""
+    """Strip zero-width characters and control characters (XLSX rejects controls; ZWS causes display bugs)."""
+    text = text.replace("\u200b", "").replace("\ufeff", "")
     text = _CONTROL_RE.sub("", text)
     return "\n".join(line.strip() for line in text.splitlines()).strip()
 
@@ -132,11 +133,82 @@ def build_table(
         if 0 <= c < columns and 0 <= r < rows:
             owner[(r, c)].words.append(w)
 
-    cells = sorted(
-        (Cell(row=p.row, column=p.column, text=clean_text(_join_words(p.words)), page=page,
-              bbox=p.bbox, rowspan=p.rowspan, colspan=p.colspan) for p in protos),
-        key=lambda c: (c.row, c.column),
+    if raw.method is DetectionMethod.TEXT:
+        rows_with_text = [r for r in range(rows) if any(owner[(r, c)].words for c in range(columns))]
+        cols_with_text = [c for c in range(columns) if any(owner[(r, c)].words for r in range(rows))]
+        if len(rows_with_text) < MIN_ROWS or len(cols_with_text) < MIN_COLUMNS:
+            return None
+        row_map = {old_r: new_r for new_r, old_r in enumerate(rows_with_text)}
+        col_map = {old_c: new_c for new_c, old_c in enumerate(cols_with_text)}
+
+        cells = []
+        for p in protos:
+            if p.row in row_map and p.column in col_map:
+                cells.append(Cell(
+                    row=row_map[p.row],
+                    column=col_map[p.column],
+                    text=clean_text(_join_words(p.words)),
+                    page=page,
+                    bbox=p.bbox,
+                    rowspan=1,
+                    colspan=1,
+                ))
+        rows = len(rows_with_text)
+        columns = len(cols_with_text)
+        xs = [xs[c] for c in cols_with_text] + [xs[cols_with_text[-1] + 1]]
+        ys = [ys[r] for r in rows_with_text] + [ys[rows_with_text[-1] + 1]]
+    else:
+        cells = [
+            Cell(row=p.row, column=p.column, text=clean_text(_join_words(p.words)), page=page,
+                 bbox=p.bbox, rowspan=p.rowspan, colspan=p.colspan)
+            for p in protos
+        ]
+
+    # Detect table title in Row 0 or immediately above the table bounding box
+    title_candidate = ""
+    title_re = re.compile(
+        r"^(table\s*\d*[:\.\-]?|schedule\s*[a-z0-9]*[:\.\-]?|exhibit\s*[a-z0-9]*[:\.\-]?|statement\s+of|summary\s+of)\b",
+        re.IGNORECASE,
     )
+    if rows > 2:
+        row0_cells = [c for c in cells if c.row == 0 and c.text]
+        row1_cells = [c for c in cells if c.row == 1 and c.text]
+        row0_text = " ".join(c.text for c in row0_cells).strip()
+
+        is_row0_title = False
+        if title_re.search(row0_text):
+            is_row0_title = True
+        elif len(row0_cells) == 1 and len(row1_cells) >= 2:
+            is_row0_title = True
+
+        if is_row0_title and rows - 1 >= MIN_ROWS:
+            title_candidate = row0_text
+            cells = [dataclasses.replace(c, row=c.row - 1) for c in cells if c.row > 0]
+            rows -= 1
+            ys = ys[1:]
+
+    # Check if the last row is actually the title/caption of a subsequent table
+    if rows > 2:
+        last_row_cells = [c for c in cells if c.row == rows - 1 and c.text]
+        last_row_text = " ".join(c.text for c in last_row_cells).strip()
+        if title_re.search(last_row_text) and rows - 1 >= MIN_ROWS:
+            cells = [c for c in cells if c.row < rows - 1]
+            rows -= 1
+            ys = ys[:-1]
+
+    if not title_candidate:
+        tx0, ty0, tx1, ty1 = raw.bbox
+        above_words = [
+            w for w in words
+            if (ty0 - 50.0 <= w.cy <= ty0 + 1.0)
+            and (tx0 - 30.0 <= w.cx <= tx1 + 30.0)
+        ]
+        if above_words:
+            above_text = clean_text(_join_words(above_words))
+            if above_text and len(above_text.splitlines()) <= 2:
+                title_candidate = single_line(above_text)
+
+    cells = sorted(cells, key=lambda c: (c.row, c.column))
     if not _is_plausible(cells, rows, columns, raw.method):
         return None
     header_rows = detect_header_rows(cells, rows)
@@ -144,7 +216,7 @@ def build_table(
     return Table(
         number=0, pages=(page,), bboxes=(raw.bbox,), row_count=rows, column_count=columns,
         header_rows=header_rows, cells=tuple(cells), method=raw.method, ocr_used=ocr_used,
-        column_edges=tuple(xs), page_size=page_size,
+        column_edges=tuple(xs), page_size=page_size, title=title_candidate,
     )
 
 
@@ -155,7 +227,15 @@ def _is_plausible(cells: Sequence[Cell], rows: int, columns: int, method: Detect
     if method is DetectionMethod.TEXT:
         fill_ratio = len(filled) / (rows * columns)
         avg_chars = sum(len(c.text) for c in filled) / len(filled)
-        return fill_ratio >= STREAM_MIN_FILL_RATIO and avg_chars <= STREAM_MAX_AVG_CELL_CHARS
+        if fill_ratio < STREAM_MIN_FILL_RATIO or avg_chars > STREAM_MAX_AVG_CELL_CHARS:
+            return False
+        # Prevent prose paragraphs where almost every row has only 1 column populated
+        rows_with_multiple_cols = sum(
+            sum(bool(c.text) for c in cells if c.row == r) >= 2
+            for r in range(rows)
+        )
+        if rows_with_multiple_cols < 1:
+            return False
     return True
 
 
@@ -232,4 +312,5 @@ def _merge_pair(prev: Table, cur: Table) -> Table:
         bboxes=prev.bboxes + cur.bboxes,
         row_count=prev.row_count + cur.row_count - drop,
         cells=prev.cells + tuple(shifted),
+        title=prev.title or cur.title,
     )
