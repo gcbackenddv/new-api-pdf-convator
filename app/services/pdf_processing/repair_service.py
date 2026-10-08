@@ -8,51 +8,23 @@ from typing import Any
 import pymupdf as fitz
 
 from app.config import get_settings
+from app.services.pdf_repair import repair_pdf as _enhanced_repair, PDFRepairError
 from .validator import PDFValidationError
 
 logger = logging.getLogger(__name__)
 
 
 def repair_pdf(src: Path, dst: Path) -> dict[str, Any]:
-    """Repair damaged or malformed PDF using MuPDF's reconstruction engine.
+    """Repair damaged or malformed PDF using the enhanced multi-strategy repair engine.
 
-    Rebuilds broken XREF tables, restores missing headers/trailers, fixes damaged
-    object streams, and rewrites clean PDF structures.
+    Backward-compatible wrapper for app.services.pdf_repair.
     """
-    settings = get_settings()
-    if not src.exists() or not src.is_file():
-        raise PDFValidationError("File does not exist.")
-
-    if src.stat().st_size == 0:
-        raise PDFValidationError("The uploaded file is empty.")
-
-    if src.stat().st_size > settings.max_pdf_size_bytes:
-        raise PDFValidationError(
-            f"PDF exceeds maximum allowed size of {settings.MAX_PDF_SIZE_MB} MB."
-        )
-
     try:
-        doc = fitz.open(src)
-    except Exception as exc:
-        logger.warning("fitz.open failed during repair: %s", exc)
-        raise PDFValidationError("File is severely corrupted and cannot be repaired.") from exc
-
-    try:
-        if doc.is_encrypted:
-            raise PDFValidationError("Encrypted PDFs cannot be repaired without a password.")
-
-        page_count = doc.page_count
-        if page_count == 0:
-            raise PDFValidationError("PDF contains no readable pages.")
-
-        was_repaired = bool(doc.is_repaired)
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        doc.save(dst, garbage=4, deflate=True, clean=True)
-
+        res = _enhanced_repair(src, dst)
         return {
-            "page_count": page_count,
-            "was_repaired": was_repaired,
+            "page_count": res.page_count,
+            "was_repaired": res.was_repaired,
         }
-    finally:
-        doc.close()
+    except PDFRepairError as exc:
+        raise PDFValidationError(exc.message) from exc
 
