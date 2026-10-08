@@ -106,7 +106,7 @@ class Settings:
         # ------------------------------------------------------------------
         self.PDF_TO_PPTX_RENDER_DPI: int = _env_int(
             "PDF_TO_PPTX_RENDER_DPI",
-            _env_int("PPTX_RENDER_DPI", 150),
+            _env_int("PPTX_RENDER_DPI", 0),
         )
         self.PPTX_RENDER_DPI: int = self.PDF_TO_PPTX_RENDER_DPI
         self.PPTX_IMAGE_FORMAT: str = _env("PPTX_IMAGE_FORMAT", "jpeg")
