@@ -1,6 +1,9 @@
+import io
 import logging
+import os
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,10 +40,10 @@ def convert_pdf_to_heic_zip(
     max_pages: int,
     max_pixels: int = 150_000_000,
 ) -> ConversionResult:
-    """Render each PDF page to one HEIC and package them into a ZIP.
+    """Render each PDF page to HEIC and package directly into a ZIP archive.
 
-    Pages are processed one at a time; each HEIC is added to the ZIP and
-    deleted immediately, so peak memory/disk is about one page.
+    Optimized with ThreadPoolExecutor and in-memory byte streams to eliminate
+    costly disk I/O per page, significantly speeding up API response times.
     """
     started = time.perf_counter()
     try:
@@ -67,37 +70,49 @@ def convert_pdf_to_heic_zip(
         zip_path = work_dir / "converted-pages.zip"
         width_digits = max(3, len(str(total)))
 
+        # Validate page dimensions first
+        for i in range(total):
+            rect = doc[i].rect
+            if (rect.width * zoom) * (rect.height * zoom) > max_pixels:
+                raise PdfToHeicError(
+                    f"Page {i + 1} is too large to render at {dpi} DPI.", 413
+                )
+
+    def _convert_page(page_idx: int) -> tuple[str, bytes]:
+        page_doc = fitz.open(pdf_path)
         try:
-            # HEIC is already compressed, so STORED avoids pointless CPU work.
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
-                for index in range(total):
-                    name = f"page-{index + 1:0{width_digits}d}.heic"
-                    heic_path = work_dir / name
-                    page = doc.load_page(index)
-                    rect = page.rect
-                    if (rect.width * zoom) * (rect.height * zoom) > max_pixels:
-                        raise PdfToHeicError(
-                            f"Page {index + 1} is too large to render at {dpi} DPI.", 413
-                        )
-                    pix = page.get_pixmap(matrix=matrix, alpha=False)
-                    img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-                    try:
-                        img.save(heic_path, format="HEIF", quality=quality)
-                    finally:
-                        img.close()
-                        del pix, page
-                    zf.write(heic_path, arcname=name)  # flat name, no directories
-                    heic_path.unlink()
-                    logger.info("Converted page %d/%d", index + 1, total)
-        except PdfToHeicError:
-            raise
-        except Exception as exc:
-            logger.exception("PDF conversion failed")
-            raise PdfToHeicError("The PDF could not be converted (it may be corrupted).") from exc
+            page = page_doc.load_page(page_idx)
+            pix = page.get_pixmap(matrix=matrix, alpha=False)
+            img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            buf = io.BytesIO()
+            img.save(buf, format="HEIF", quality=quality, encopts={"preset": "faster"})
+            img.close()
+            del pix, page
+            name = f"page-{page_idx + 1:0{width_digits}d}.heic"
+            return name, buf.getvalue()
+        finally:
+            page_doc.close()
+
+    try:
+        max_workers = min(os.cpu_count() or 4, 4, total) if total > 1 else 1
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            encoded_pages = list(executor.map(_convert_page, range(total)))
+
+        # HEIC is already compressed; ZIP_STORED avoids pointless CPU re-compression.
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
+            for name, data in encoded_pages:
+                zf.writestr(name, data)
+
+    except PdfToHeicError:
+        raise
+    except Exception as exc:
+        logger.exception("PDF conversion failed")
+        raise PdfToHeicError("The PDF could not be converted (it may be corrupted).") from exc
 
     size = zip_path.stat().st_size
+    duration = time.perf_counter() - started
     logger.info(
-        "PDF conversion completed: pages=%d output_bytes=%d seconds=%.2f",
-        total, size, time.perf_counter() - started,
+        "PDF conversion completed: pages=%d output_bytes=%d seconds=%.2f (%.2f s/page)",
+        total, size, duration, duration / max(total, 1),
     )
     return ConversionResult(zip_path, total, size)
