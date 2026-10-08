@@ -55,6 +55,7 @@ def perform_ocr_on_page(
     geom: SlideGeometry,
     default_font: str = "Calibri",
     languages: str = "eng,ben",
+    dpi: int = 300,
 ) -> bool:
     """Attempts OCR on a genuine scanned page and adds editable text boxes.
 
@@ -79,10 +80,10 @@ def perform_ocr_on_page(
     # 1. Attempt PyMuPDF Tesseract OCR integration
     try:
         try:
-            tp = page.get_textpage_ocr(language=lang_str, dpi=150, full=True)
+            tp = page.get_textpage_ocr(language=lang_str, dpi=dpi, full=True)
         except Exception as ocr_err:
             logger.debug("OCR with %s failed (%s); trying fallback language 'eng'", lang_str, ocr_err)
-            tp = page.get_textpage_ocr(language="eng", dpi=150, full=True)
+            tp = page.get_textpage_ocr(language="eng", dpi=dpi, full=True)
 
         page_dict = page.get_text("dict", textpage=tp)
         blocks = page_dict.get("blocks", [])
