@@ -1,10 +1,84 @@
 from dataclasses import dataclass
+import math
 from pptx.util import Emu
 import fitz
 
 EMU_PER_POINT = 12700
 MAX_SLIDE_EMU = 50_000_000  # PowerPoint limit (~54.6 inches)
 MIN_DIMENSION_EMU = 1000
+
+
+def calculate_optimal_dpi(
+    page: fitz.Page,
+    target_dpi: int | None = None,
+    *,
+    min_dpi: int = 150,
+    max_dpi: int = 300,
+    max_pixels: int = 40_000_000,
+) -> int:
+    """Calculates optimal DPI for page rasterization, balancing high visual fidelity and VPS memory limits.
+
+    If target_dpi is provided and > 0, clamps target_dpi to the memory ceiling.
+    Otherwise, automatically computes DPI based on embedded image resolutions, vector complexity,
+    scanned status, and page dimensions.
+    """
+    rect = page.rect
+    w_pt = max(1.0, float(rect.width))
+    h_pt = max(1.0, float(rect.height))
+
+    # Calculate absolute memory ceiling based on max_pixels
+    area_pt2 = w_pt * h_pt
+    max_allowed_by_mem = int(math.floor(72.0 * math.sqrt(max_pixels / area_pt2)))
+    effective_max_dpi = min(max_dpi, max(72, max_allowed_by_mem))
+
+    if target_dpi is not None and target_dpi > 0:
+        return min(target_dpi, effective_max_dpi)
+
+    # Automatic calculation for high quality
+    candidate_dpi = 200  # High-quality baseline
+
+    # Check embedded images resolution
+    image_dpis: list[float] = []
+    try:
+        for info in page.get_image_info(xrefs=True):
+            bbox = info.get("bbox")
+            w_px = info.get("width", 0)
+            h_px = info.get("height", 0)
+            if bbox and len(bbox) == 4 and w_px > 0 and h_px > 0:
+                bw = abs(bbox[2] - bbox[0])
+                bh = abs(bbox[3] - bbox[1])
+                if bw > 1.0 and bh > 1.0:
+                    dx = (w_px / bw) * 72.0
+                    dy = (h_px / bh) * 72.0
+                    image_dpis.append(max(dx, dy))
+    except Exception:
+        pass
+
+    if image_dpis:
+        max_img_dpi = max(image_dpis)
+        # Match image resolution up to max_dpi
+        candidate_dpi = max(candidate_dpi, min(max_dpi, int(round(max_img_dpi))))
+
+    # Check vector drawings density (crisper rasterization for complex diagrams/curves)
+    try:
+        drawings = page.get_drawings()
+        if len(drawings) > 0:
+            candidate_dpi = max(candidate_dpi, 240)
+        if len(drawings) > 20:
+            candidate_dpi = max(candidate_dpi, 300)
+    except Exception:
+        pass
+
+    # Check if page is textless or scanned (OCR benefits from 300 DPI)
+    try:
+        if not page.get_text().strip() and len(page.get_images()) > 0:
+            candidate_dpi = max(candidate_dpi, 300)
+    except Exception:
+        pass
+
+    final_dpi = max(min_dpi, min(candidate_dpi, effective_max_dpi))
+    return final_dpi
+
 
 
 @dataclass(frozen=True)
