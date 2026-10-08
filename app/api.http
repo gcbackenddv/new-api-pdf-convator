@@ -326,3 +326,30 @@ Content-Type: application/pdf
 
 < {{pdfPath}}
 ------ExtractTablesOtherBoundary--
+
+###############################################################################
+# Repair PDF
+###############################################################################
+
+### Repair damaged, corrupted, or unreadable PDF (primary endpoint)
+POST {{baseUrl}}/repair-pdf
+Content-Type: multipart/form-data; boundary=----RepairPdfBoundary
+
+------RepairPdfBoundary
+Content-Disposition: form-data; name="file"; filename="corrupted.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------RepairPdfBoundary--
+
+### Repair damaged or corrupted PDF (v1 alias)
+POST {{baseUrl}}/api/v1/pdf/repair
+Content-Type: multipart/form-data; boundary=----RepairPdfV1Boundary
+
+------RepairPdfV1Boundary
+Content-Disposition: form-data; name="file"; filename="corrupted.pdf"
+Content-Type: application/pdf
+
+< {{pdfPath}}
+------RepairPdfV1Boundary--
+
