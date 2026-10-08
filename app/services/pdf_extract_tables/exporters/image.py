@@ -162,12 +162,15 @@ class ImageExporter:
             span_h = sum(row_h[c.row:last_row + 1])
             if need > span_h:
                 row_h[last_row] += need - span_h
+        title_text = table.title or f"Table {table.number}"
+        title_h = float(LINE_HEIGHT + 2 * PAD_Y) if title_text else 0.0
+
         y_off = [0.0]
         for h in row_h:
             y_off.append(y_off[-1] + h)
         footer_h = LINE_HEIGHT + 2 * PAD_Y if hidden else 0
 
-        width, height = int(x_off[-1]) + 1, int(y_off[-1] + footer_h) + 1
+        width, height = int(x_off[-1]) + 1, int(y_off[-1] + title_h + footer_h) + 1
         if width * height > self._s.image_max_pixels:
             raise ResourceLimitError(
                 "A table is too large to render as an image; choose another output format or fewer tables."
@@ -175,13 +178,19 @@ class ImageExporter:
 
         image = Image.new("RGB", (width, height), BODY_BG)
         draw = ImageDraw.Draw(image)
+
+        if title_text:
+            draw.rectangle([0, 0, width, title_h], fill=(226, 232, 240), outline=GRID)
+            font_title = fonts.for_text(title_text)
+            draw.text((PAD_X, PAD_Y), title_text, fill=INK, font=font_title)
+
         for idx, c in enumerate(cells):
             x0, x1 = x_off[c.column], x_off[min(c.column + c.colspan, cols)]
-            y0, y1 = y_off[c.row], y_off[min(c.row + c.rowspan, rows)]
+            y0, y1 = y_off[c.row] + title_h, y_off[min(c.row + c.rowspan, rows)] + title_h
             draw.rectangle([x0, y0, x1, y1], fill=HEADER_BG if c.is_header else BODY_BG, outline=GRID)
             font = fonts.for_text(c.text)
             for i, line in enumerate(wrapped[idx]):
                 draw.text((x0 + PAD_X, y0 + PAD_Y + i * LINE_HEIGHT), line, fill=INK, font=font)
         if hidden:
-            draw.text((PAD_X, y_off[-1] + PAD_Y), f"… {hidden} more rows not shown", fill=INK, font=fonts.latin)
+            draw.text((PAD_X, y_off[-1] + title_h + PAD_Y), f"… {hidden} more rows not shown", fill=INK, font=fonts.latin)
         return image
