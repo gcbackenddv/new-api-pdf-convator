@@ -32,10 +32,11 @@ class MarkdownExporter:
     @staticmethod
     def _render(table: Table) -> str:
         header = table.headers()
+        title_text = table.title or f"Table {table.number} ({describe_pages(table)})"
         lines = [
-            f"## Table {table.number} ({describe_pages(table)})", "",
+            f"## {title_text}", "",
             _row(header),
-            "| " + " | ".join("---" for _ in header) + " |",
+            "| " + " | ".join(":---:" for _ in header) + " |",
             *(_row(r) for r in table.body_rows()),
         ]
         return "\n".join(lines)
