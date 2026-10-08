@@ -114,6 +114,10 @@ def extract_and_add_tables(
                     if not text_str:
                         continue
                     cell = ppt_table.cell(r_idx, c_idx)
+                    cell.margin_left = Pt(2)
+                    cell.margin_right = Pt(2)
+                    cell.margin_top = Pt(2)
+                    cell.margin_bottom = Pt(2)
                     cell.text = text_str
                     for para in cell.text_frame.paragraphs:
                         para.font.name = table_font
