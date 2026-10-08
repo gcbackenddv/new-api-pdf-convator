@@ -33,25 +33,51 @@ def extract_and_add_tables(
         return table_rects
 
     for t in tabs.tables:
-        # A reliable table must have at least 2 rows and 2 columns
-        if t.row_count < 2 or t.col_count < 2:
-            continue
-        # Guard against pathological grids that could exhaust memory
-        if t.row_count * t.col_count > 1000:
+        if t.col_count < 2:
             continue
 
-        bbox = fitz.Rect(t.bbox)
+        # Find rows that have genuine multi-column structure (at least 2 non-empty cells)
+        valid_row_indices: list[int] = []
+        if hasattr(t, "rows") and t.rows:
+            for idx, r in enumerate(t.rows):
+                non_none = sum(1 for c in getattr(r, "cells", []) if c is not None)
+                if non_none >= 2:
+                    valid_row_indices.append(idx)
+        else:
+            valid_row_indices = list(range(t.row_count))
+
+        # A reliable table must have at least 2 multi-column rows
+        if len(valid_row_indices) < 2:
+            continue
+
+        start_r = valid_row_indices[0]
+        end_r = valid_row_indices[-1]
+        active_rows = t.rows[start_r : end_r + 1] if hasattr(t, "rows") and t.rows else []
+        active_row_count = len(active_rows) if active_rows else (end_r - start_r + 1)
+
+        # Guard against pathological grids that could exhaust memory
+        if active_row_count * t.col_count > 1000:
+            continue
+
+        # Trim table bounding box vertically to only the active rows
+        if active_rows and hasattr(active_rows[0], "bbox") and hasattr(active_rows[-1], "bbox"):
+            y0 = active_rows[0].bbox[1]
+            y1 = active_rows[-1].bbox[3]
+            bbox = fitz.Rect(t.bbox[0], y0, t.bbox[2], y1)
+        else:
+            bbox = fitz.Rect(t.bbox)
+
         if bbox.width <= 10.0 or bbox.height <= 10.0:
             continue
 
         try:
             left, top, width, height = geom.to_pptx_coords(bbox.x0, bbox.y0, bbox.x1, bbox.y1)
-            table_shape = slide.shapes.add_table(t.row_count, t.col_count, left, top, width, height)
+            table_shape = slide.shapes.add_table(active_row_count, t.col_count, left, top, width, height)
             ppt_table = table_shape.table
 
             # Preserve exact column widths from cell coordinates
-            if hasattr(t, "rows") and t.rows:
-                first_row = t.rows[0]
+            if active_rows:
+                first_row = active_rows[0]
                 if hasattr(first_row, "cells") and first_row.cells:
                     for c_idx, cell_box in enumerate(first_row.cells):
                         if c_idx < t.col_count and cell_box and len(cell_box) == 4:
@@ -59,13 +85,14 @@ def extract_and_add_tables(
                             ppt_table.columns[c_idx].width = geom.pt_to_emu(col_pt)
 
                 # Set row heights
-                for r_idx, r in enumerate(t.rows):
-                    if r_idx < t.row_count and hasattr(r, "bbox") and r.bbox:
+                for r_idx, r in enumerate(active_rows):
+                    if r_idx < active_row_count and hasattr(r, "bbox") and r.bbox:
                         row_pt = max(5.0, r.bbox[3] - r.bbox[1])
                         ppt_table.rows[r_idx].height = geom.pt_to_emu(row_pt)
 
             data = t.extract()
-            for r_idx, row in enumerate(data):
+            active_data = data[start_r : end_r + 1] if data else []
+            for r_idx, row in enumerate(active_data):
                 for c_idx, cell_value in enumerate(row):
                     if cell_value is None:
                         continue
@@ -83,7 +110,7 @@ def extract_and_add_tables(
             table_rects.append(bbox)
             logger.debug(
                 "Added native table (%dx%d) on slide %d",
-                t.row_count,
+                active_row_count,
                 t.col_count,
                 page.number + 1,
             )
