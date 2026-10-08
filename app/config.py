@@ -128,6 +128,9 @@ class Settings:
         self.PDF_TO_PPTX_EXTRACT_SHAPES: bool = _env_bool("PDF_TO_PPTX_EXTRACT_SHAPES", True)
         self.PDF_TO_PPTX_DETECT_TABLES: bool = _env_bool("PDF_TO_PPTX_DETECT_TABLES", True)
         self.PDF_TO_PPTX_TIMEOUT_SECONDS: int = _env_int("PDF_TO_PPTX_TIMEOUT_SECONDS", 300)
+        self.PDF_TO_PPTX_VALIDATE_FIDELITY: bool = _env_bool("PDF_TO_PPTX_VALIDATE_FIDELITY", False)
+        self.PDF_TO_PPTX_MIN_SIMILARITY_SCORE: float = _env_float("PDF_TO_PPTX_MIN_SIMILARITY_SCORE", 0.70)
+        self.PDF_TO_PPTX_AUTO_IMPROVE: bool = _env_bool("PDF_TO_PPTX_AUTO_IMPROVE", True)
 
         # ------------------------------------------------------------------
         # PPT/PPTX → PDF (LibreOffice)
