@@ -108,7 +108,16 @@ class TableExtractionEngine:
                 tables, edge_ratio=s.continuation_edge_ratio,
                 align_tolerance=s.column_align_tolerance, max_rows=s.max_rows_per_table,
             )
-        tables = [dataclasses.replace(t, number=i) for i, t in enumerate(tables, 1)]
+        def _format_title(idx: int, t: Table) -> str:
+            pages_str = f"Pages {t.pages[0]}-{t.pages[-1]}" if len(t.pages) > 1 else f"Page {t.page}"
+            if t.title:
+                import re
+                if not re.match(r"^table\s*\d+", t.title, re.IGNORECASE):
+                    return f"Table {idx}: {t.title} ({pages_str})"
+                return f"{t.title} ({pages_str})"
+            return f"Table {idx} ({pages_str})"
+
+        tables = [dataclasses.replace(t, number=i, title=_format_title(i, t)) for i, t in enumerate(tables, 1)]
 
         if not tables:
             if state.ocr_skipped:
@@ -175,10 +184,24 @@ class TableExtractionEngine:
         lattice = self._lattice.detect(page)
         raws = list(lattice)
         if s.borderless:
-            raws.extend(
-                r for r in self._stream.detect(page)
-                if all(bbox_overlap_ratio(r.bbox, l.bbox) < DUPLICATE_OVERLAP for l in lattice)
-            )
+            stream_raws = list(self._stream.detect(page))
+            if lattice:
+                lat_boxes = sorted([l.bbox for l in lattice], key=lambda b: b[1])
+                cur_y = 0.0
+                for lb in lat_boxes:
+                    if lb[1] - cur_y > 40.0:
+                        band_clip = pymupdf.Rect(0, cur_y, page.rect.width, lb[1])
+                        stream_raws.extend(self._stream.detect(page, clip=band_clip))
+                    cur_y = max(cur_y, lb[3])
+                if page.rect.height - cur_y > 40.0:
+                    band_clip = pymupdf.Rect(0, cur_y, page.rect.width, page.rect.height)
+                    stream_raws.extend(self._stream.detect(page, clip=band_clip))
+
+            seen_bboxes = [l.bbox for l in lattice]
+            for r in stream_raws:
+                if all(bbox_overlap_ratio(r.bbox, sb) < DUPLICATE_OVERLAP for sb in seen_bboxes):
+                    seen_bboxes.append(r.bbox)
+                    raws.append(r)
         return self._build(raws, words, page_no, size, ocr_used=False, state=state)
 
     def _ocr_page(self, page: pymupdf.Page, page_no: int, size: tuple[float, float],
