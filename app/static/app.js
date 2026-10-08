@@ -47,6 +47,8 @@ async function sendRequest(url, options = {}, download = false) {
       const pdfRepaired = response.headers.get("x-pdf-repaired");
       const pdfPages = response.headers.get("x-pdf-pages");
       const formatSuffix = outputFormat && outputFormat !== "original" ? `-${outputFormat}` : "";
+      const slideCount = response.headers.get("x-slide-count");
+      const isPptx = contentType.includes("presentation") || link.download.endsWith(".pptx");
       const defaultName = flattenFormFields !== null
         ? "flattened-document.pdf"
         : extractedImageCount !== null
@@ -57,7 +59,9 @@ async function sendRequest(url, options = {}, download = false) {
               ? "cleaned-document.pdf"
               : pdfRepaired !== null
                 ? "repaired-document.pdf"
-                : "download";
+                : slideCount !== null || isPptx
+                  ? "presentation.pptx"
+                  : "download";
       link.download = filenameFromResponse(response, defaultName);
       document.body.append(link);
       link.click();
@@ -80,11 +84,17 @@ async function sendRequest(url, options = {}, download = false) {
       const repairMessage = pdfRepaired === null
         ? null
         : `Repaired PDF downloaded (${pdfPages || "unknown"} pages). ${pdfRepaired === "true" ? "Corrupted structures were successfully restored." : "Document structure is healthy and clean."}`;
+      const pptxMessage = slideCount !== null
+        ? `PowerPoint presentation downloaded (${slideCount} slide${slideCount === "1" ? "" : "s"}). Your download has started.`
+        : isPptx
+          ? "PowerPoint presentation downloaded. Your download has started."
+          : null;
       const downloadMessage = flattenMessage
         || tableMessage
         || searchableMessage
         || blankPagesMessage
         || repairMessage
+        || pptxMessage
         || (extractedImageCount === null
           ? "Conversion complete. Your file download has started."
           : `Extracted ${extractedImageCount} embedded image${extractedImageCount === "1" ? "" : "s"}${outputFormat ? ` as ${outputFormat}` : ""}. Your download has started.`);
@@ -97,10 +107,13 @@ async function sendRequest(url, options = {}, download = false) {
       const repairDetails = pdfRepaired === null
         ? ""
         : `\nTotal pages: ${pdfPages}\nRepaired: ${pdfRepaired}`;
+      const pptxDetails = slideCount === null
+        ? ""
+        : `\nSlide count: ${slideCount}`;
       showResponse(
         `${response.status} ${response.statusText}`,
         downloadMessage,
-        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).${flattenFormFields === null ? "" : `\nForm fields found: ${flattenFormFields}\nAnnotations found: ${flattenAnnotations || "0"}\nSignature invalidated: ${signatureInvalidated ? "yes" : "no"}.`}${tableDetails}${blankDetails}${repairDetails}`
+        `Downloaded ${link.download} (${blob.size.toLocaleString()} bytes).${flattenFormFields === null ? "" : `\nForm fields found: ${flattenFormFields}\nAnnotations found: ${flattenAnnotations || "0"}\nSignature invalidated: ${signatureInvalidated ? "yes" : "no"}.`}${tableDetails}${blankDetails}${repairDetails}${pptxDetails}`
       );
       return;
     }
@@ -468,6 +481,10 @@ document.querySelectorAll("form[data-endpoint]").forEach((form) => {
       if (field.type === "checkbox") {
         query.set(field.name, String(field.checked));
       } else if (field.value !== "") {
+        // Skip dpi if it's 0 or auto, allowing backend auto-calculation without passing dpi=0
+        if (field.name === "dpi" && (field.value === "0" || field.value.toLowerCase?.() === "auto")) {
+          return;
+        }
         query.set(field.name, field.value);
       }
     });
@@ -492,85 +509,8 @@ document.querySelectorAll("form[data-endpoint]").forEach((form) => {
 });
 
 // ==========================================================================
-// Drag & Drop Enhancements (Commented out)
+// Card Drag & Drop
 // ==========================================================================
-/*
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
-function updateDropZone(zone, files) {
-  const prompt = zone.querySelector(".drop-zone-prompt");
-  const info = zone.querySelector(".drop-zone-file-info");
-  const filename = zone.querySelector(".drop-zone-filename");
-  const filesize = zone.querySelector(".drop-zone-filesize");
-  const badge = zone.querySelector(".drop-zone-file-badge");
-
-  if (!files || files.length === 0) {
-    if (prompt) prompt.hidden = false;
-    if (info) info.hidden = true;
-    return;
-  }
-
-  if (prompt) prompt.hidden = true;
-  if (info) info.hidden = false;
-
-  if (files.length === 1) {
-    const file = files[0];
-    if (filename) filename.textContent = file.name;
-    if (filesize) filesize.textContent = formatBytes(file.size);
-    if (badge) {
-      const parts = file.name.split(".");
-      const ext = parts.length > 1 ? parts.pop().toUpperCase() : "FILE";
-      badge.textContent = ext;
-    }
-  } else {
-    const totalBytes = Array.from(files).reduce((acc, f) => acc + f.size, 0);
-    if (filename) filename.textContent = `${files.length} files selected`;
-    if (filesize) filesize.textContent = formatBytes(totalBytes);
-    if (badge) badge.textContent = `${files.length} FILES`;
-  }
-}
-
-document.querySelectorAll(".drop-zone").forEach((zone) => {
-  const input = zone.querySelector(".drop-zone-input");
-  if (!input) return;
-
-  input.addEventListener("change", () => {
-    updateDropZone(zone, input.files);
-  });
-
-  zone.addEventListener("dragenter", (e) => {
-    e.preventDefault();
-    zone.classList.add("drag-over");
-  });
-
-  zone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    zone.classList.add("drag-over");
-  });
-
-  zone.addEventListener("dragleave", (e) => {
-    e.preventDefault();
-    if (!zone.contains(e.relatedTarget)) {
-      zone.classList.remove("drag-over");
-    }
-  });
-
-  zone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    zone.classList.remove("drag-over");
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      input.files = e.dataTransfer.files;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  });
-});
-
 document.querySelectorAll(".operation-card").forEach((card) => {
   card.addEventListener("dragenter", (e) => {
     e.preventDefault();
@@ -591,11 +531,8 @@ document.querySelectorAll(".operation-card").forEach((card) => {
 
   card.addEventListener("drop", (e) => {
     card.classList.remove("card-drag-over");
-    if (e.target.closest(".drop-zone")) {
-      return;
-    }
     e.preventDefault();
-    const input = card.querySelector(".drop-zone-input") || card.querySelector('input[type="file"]');
+    const input = card.querySelector('input[type="file"]');
     if (input && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       input.files = e.dataTransfer.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -605,5 +542,5 @@ document.querySelectorAll(".operation-card").forEach((card) => {
 
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
-*/
+
 
