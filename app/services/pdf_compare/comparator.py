@@ -44,6 +44,11 @@ def compare_pdfs(
     doc_old = fitz.open(path_old)
     doc_new = fitz.open(path_new)
 
+    logger.info(
+        "🔍 [PDF-Compare] Started comparison: original='%s' (%d pages) vs revised='%s' (%d pages) [text=%s, visual=%s]",
+        path_old.name, doc_old.page_count, path_new.name, doc_new.page_count, do_text, do_visual,
+    )
+
     try:
         matches = match_pages(doc_old, doc_new)
         all_diffs: list[Difference] = []
@@ -122,6 +127,11 @@ def compare_pdfs(
                     )
                 )
 
+                logger.info(
+                    "📄 [PDF-Compare] Page %d → %d: status=%s, text_similarity=%.1f%%, visual_ssim=%.1f%%, diffs_found=%d",
+                    old_idx + 1, new_idx + 1, status.upper(), text_sim * 100, vis_sim * 100, len(pair_diffs),
+                )
+
             elif old_idx is not None:
                 # Deleted page
                 all_diffs.append(
@@ -171,6 +181,13 @@ def compare_pdfs(
             "html": str(html_path.name),
             "pdf": str(pdf_path.name),
         }
+
+        logger.info(
+            "📊 [PDF-Compare] Report generated successfully! Summary: [Total: %d | Added: %d | Deleted: %d | Modified: %d | Moved: %d | Visual: %d] -> Output: %s",
+            summary.total_differences, summary.added, summary.deleted, summary.modified,
+            summary.moved, summary.visual_changes, output_dir,
+        )
+
         return result
 
     finally:
