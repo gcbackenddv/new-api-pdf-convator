@@ -10,11 +10,13 @@ from PIL import Image
 from pptx import Presentation
 
 from app.services.pdf_to_pptx.coordinates import SlideGeometry, calculate_optimal_dpi
+from app.services.pdf_to_pptx.font_embedder import embed_fonts_from_pdf
 from app.services.pdf_to_pptx.images import extract_and_add_images
 from app.services.pdf_to_pptx.ocr import is_scanned_page, perform_ocr_on_page
 from app.services.pdf_to_pptx.shapes import extract_and_add_shapes
 from app.services.pdf_to_pptx.tables import extract_and_add_tables
 from app.services.pdf_to_pptx.text import extract_and_add_text
+from app.services.pdf_to_pptx.validator import PptxValidationReport, validate_and_score_pptx
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ class PdfToPptxResult:
     output_path: Path
     slide_count: int
     size_bytes: int
+    validation_report: PptxValidationReport | None = None
 
 
 def _ensure_pdf_header(pdf_path: Path) -> None:
@@ -134,6 +137,11 @@ def convert_pdf_to_pptx(
     extract_images: bool = True,
     extract_shapes: bool = True,
     detect_tables: bool = True,
+    validate_fidelity: bool = False,
+    auto_improve: bool = True,
+    min_similarity_threshold: float = 0.70,
+    soffice_path: str = "",
+    work_dir: Path | None = None,
 ) -> PdfToPptxResult:
     """Converts a PDF into a production-grade editable PowerPoint presentation.
 
@@ -254,20 +262,27 @@ def convert_pdf_to_pptx(
                     )
 
                 shapes_count = 0
+                vector_fallback_rects: list[fitz.Rect] = []
                 if extract_shapes:
                     shapes_count = extract_and_add_shapes(
-                        page, slide, page_geom, excluded_rects=table_rects, dpi=page_dpi
+                        page,
+                        slide,
+                        page_geom,
+                        excluded_rects=table_rects,
+                        dpi=page_dpi,
+                        fallback_rects=vector_fallback_rects,
                     )
 
                 images_count = 0
                 if extract_images:
                     images_count = extract_and_add_images(doc, page, slide, page_geom, dpi=page_dpi)
 
+                excluded_text_rects = list(table_rects) + vector_fallback_rects
                 text_count = extract_and_add_text(
                     page,
                     slide,
                     page_geom,
-                    excluded_rects=table_rects,
+                    excluded_rects=excluded_text_rects,
                     default_font=default_font,
                 )
 
@@ -320,11 +335,26 @@ def convert_pdf_to_pptx(
 
         try:
             prs.save(output_path)
+            # Embed actual TrueType/OpenType font programs from PDF to preserve exact font styles
+            embed_fonts_from_pdf(doc, output_path)
         except Exception as exc:
             logger.exception("Saving PPTX failed")
             raise PdfToPptxError("Unable to convert PDF to PowerPoint.", 500) from exc
 
         validate_pptx_output(output_path, total, doc)
+
+    # Automated fidelity validation and auto-improvement pipeline
+    val_report = None
+    if validate_fidelity:
+        val_work_dir = work_dir or output_path.parent
+        val_report = validate_and_score_pptx(
+            pdf_path,
+            output_path,
+            work_dir=val_work_dir,
+            soffice_path=soffice_path,
+            min_similarity_threshold=min_similarity_threshold,
+            auto_improve=auto_improve,
+        )
 
     size = output_path.stat().st_size
     duration = time.perf_counter() - started
@@ -334,4 +364,4 @@ def convert_pdf_to_pptx(
         size,
         duration,
     )
-    return PdfToPptxResult(output_path, total, size)
+    return PdfToPptxResult(output_path, total, size, validation_report=val_report)
