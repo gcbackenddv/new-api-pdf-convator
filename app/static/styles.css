@@ -574,41 +574,6 @@ input[type="file"]::file-selector-button {
   font-size: 10px;
 }
 
-/* ==========================================================================
-   Drag and Drop Zone Styles (Commented out)
-   ==========================================================================
-.drop-zone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 84px;
-  padding: 14px 10px;
-  border: 1.5px dashed #cfd5dc;
-  border-radius: 6px;
-  background: #fbfbfb;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-  margin-top: 4px;
-  overflow: hidden;
-  text-align: center;
-}
-
-.drop-zone:hover,
-.drop-zone:focus-within {
-  border-color: #71717a;
-  background: #f4f4f5;
-}
-
-.drop-zone.drag-over {
-  border-color: #2563eb;
-  background: #eff6ff;
-  border-style: solid;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  transform: scale(1.008);
-}
-
 .operation-card.card-drag-over {
   background: #f8faff;
   box-shadow: 0 0 0 2px #3b82f6 inset;
@@ -616,93 +581,6 @@ input[type="file"]::file-selector-button {
   padding-left: 8px;
   padding-right: 8px;
 }
-
-.drop-zone-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.drop-zone-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  pointer-events: none;
-}
-
-.drop-zone-icon {
-  color: #71717a;
-  transition: transform 0.15s ease, color 0.15s ease;
-}
-
-.drop-zone:hover .drop-zone-icon,
-.drop-zone.drag-over .drop-zone-icon {
-  color: #2563eb;
-  transform: translateY(-2px);
-}
-
-.drop-zone-text {
-  font-size: 11px;
-  color: #52525b;
-}
-
-.drop-zone-text strong {
-  font-weight: 600;
-  color: #27272a;
-}
-
-.drop-zone-text span {
-  color: #2563eb;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.drop-zone-file-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  pointer-events: none;
-  max-width: 100%;
-  padding: 0 6px;
-}
-
-.drop-zone-file-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font: 10px Consolas, monospace;
-  font-weight: 600;
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.drop-zone-filename {
-  font-size: 11px;
-  font-weight: 600;
-  color: #18181b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 250px;
-}
-
-.drop-zone-filesize {
-  font-size: 10px;
-  color: #71717a;
-}
-
-.drop-zone-replace-hint {
-  font-size: 9px;
-  color: #94a3b8;
-  margin-top: 1px;
-}
-========================================================================== */
 
 .field-row {
   display: flex;
