@@ -13,6 +13,7 @@ from app.services.pdf_to_pptx.fonts import (
     is_italic,
     normalize_font_name,
     parse_color,
+    resolve_font_styling,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ def _detect_alignment(lines: list[dict[str, Any]]) -> PP_ALIGN:
     # If right margins are aligned tightly
     if var_right < 5.0 and var_right < var_left:
         return PP_ALIGN.RIGHT
+    # If both left and right margins are aligned tightly on 3+ lines (justified block)
+    if len(lines) >= 3 and var_left < 6.0 and var_right < 10.0:
+        return PP_ALIGN.JUSTIFY
 
     return PP_ALIGN.LEFT
 
@@ -118,14 +122,24 @@ def extract_and_add_text(
             continue
 
         left, top, width, height = geom.to_pptx_coords(b_rect.x0, b_rect.y0, b_rect.x1, b_rect.y1)
+        align = _detect_alignment(valid_lines)
 
         # For single line headings/labels, do not wrap text so words never prematurely wrap
         is_single_line = (len(valid_lines) <= 1)
+        orig_w = int(width)
         if is_single_line:
             # Add safety margin so font metric variances don't clip text
-            width = Emu(int(width * 1.25))
+            extra_w = int(orig_w * 0.20)
         else:
-            width = Emu(int(width * 1.15))
+            extra_w = int(orig_w * 0.10)
+
+        width = Emu(orig_w + extra_w)
+
+        # Re-anchor left coordinate based on alignment to preserve exact visual alignment
+        if align == PP_ALIGN.RIGHT:
+            left = Emu(int(left) - extra_w)
+        elif align == PP_ALIGN.CENTER:
+            left = Emu(int(left) - (extra_w // 2))
 
         try:
             tx_box = slide.shapes.add_textbox(left, top, width, height)
@@ -144,8 +158,6 @@ def extract_and_add_text(
                 angle_deg = math.degrees(math.atan2(first_dir[1], first_dir[0]))
                 if abs(angle_deg) > 1.0:
                     tx_box.rotation = angle_deg
-
-            align = _detect_alignment(valid_lines)
 
             # Calculate actual line spacing from vertical delta
             line_spacing_pt: float | None = None
@@ -190,18 +202,26 @@ def extract_and_add_text(
                     run = current_p.add_run()
                     run.text = text_content
 
+                    flags = int(span.get("flags", 0) or 0)
                     font_raw = span.get("font", "")
-                    run.font.name = normalize_font_name(font_raw, default_font)
+                    font_name, is_bold_val, is_italic_val = resolve_font_styling(font_raw, flags, default_font)
+
+                    run.font.name = font_name
+                    run.font.bold = is_bold_val
+                    run.font.italic = is_italic_val
 
                     size_val = float(span.get("size", 12.0) or 12.0)
                     size_val = max(4.0, min(144.0, size_val))
-                    run.font.size = Pt(size_val)
+                    run.font.size = Pt(round(size_val, 1))
                     prev_font_size = size_val
 
-                    flags = int(span.get("flags", 0) or 0)
-                    run.font.bold = is_bold(flags, font_raw)
-                    run.font.italic = is_italic(flags, font_raw)
                     run.font.color.rgb = parse_color(span.get("color", 0))
+
+                    if flags & 1:  # Superscript
+                        try:
+                            run.font.superscript = True
+                        except Exception:
+                            pass
 
                 prev_line_bottom = line_bbox[3]
 
