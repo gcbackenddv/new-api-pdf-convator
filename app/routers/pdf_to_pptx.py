@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
 from app.output import safe_stem, save_output
@@ -22,7 +22,9 @@ def _handle_pdf_to_pptx_conversion(
     file: UploadFile,
     dpi: int,
     ocr: bool,
-) -> FileResponse:
+    validate: bool = False,
+    return_report: bool = False,
+) -> FileResponse | JSONResponse:
     if file is None or not file.filename:
         raise HTTPException(400, "No PDF file was uploaded.")
     if not file.filename.lower().endswith(".pdf"):
@@ -59,6 +61,11 @@ def _handle_pdf_to_pptx_conversion(
                 extract_images=settings.PDF_TO_PPTX_EXTRACT_IMAGES,
                 extract_shapes=settings.PDF_TO_PPTX_EXTRACT_SHAPES,
                 detect_tables=settings.PDF_TO_PPTX_DETECT_TABLES,
+                validate_fidelity=validate,
+                auto_improve=settings.PDF_TO_PPTX_AUTO_IMPROVE,
+                min_similarity_threshold=settings.PDF_TO_PPTX_MIN_SIMILARITY_SCORE,
+                soffice_path=settings.PPTX_PDF_SOFFICE_PATH,
+                work_dir=work_dir,
             )
         except PdfToPptxError as exc:
             raise HTTPException(exc.status_code, exc.message)
@@ -71,11 +78,32 @@ def _handle_pdf_to_pptx_conversion(
         pdf_path.unlink(missing_ok=True)
         background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
         keep = True
+
+        val_report = getattr(result, "validation_report", None)
+        if return_report:
+            report_dict = val_report.to_dict() if val_report else None
+            return JSONResponse({
+                "status": "success",
+                "filename": out_name,
+                "slide_count": getattr(result, "slide_count", 0),
+                "size_bytes": getattr(result, "size_bytes", 0),
+                "validation_report": report_dict,
+            })
+
         headers = {}
         if hasattr(result, "slide_count"):
             headers["X-Slide-Count"] = str(result.slide_count)
         if hasattr(result, "size_bytes"):
             headers["X-Output-Size"] = str(result.size_bytes)
+        if val_report:
+            headers["X-Visual-Similarity-Score"] = f"{val_report.overall_similarity_score:.3f}"
+            headers["X-Validation-Status"] = val_report.validation_status
+            headers["X-Successful-Pages"] = str(val_report.successful_pages)
+            headers["X-Failed-Pages"] = str(val_report.failed_pages)
+            reprocessed_count = sum(1 for p in val_report.pages if p.was_reprocessed)
+            if reprocessed_count > 0:
+                headers["X-Reprocessed-Pages"] = str(reprocessed_count)
+
         return FileResponse(
             result.output_path,
             media_type=PPTX_MEDIA_TYPE,
@@ -109,8 +137,9 @@ def pdf_to_pptx(
     file: UploadFile = File(None, description="A PDF file"),
     dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
     ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
+    validate: bool = Query(settings.PDF_TO_PPTX_VALIDATE_FIDELITY, description="Validate visual fidelity and auto-improve problematic pages"),
 ):
-    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr)
+    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr, validate=validate)
 
 
 @router.post(
@@ -130,5 +159,36 @@ def pdf_to_pptx_v1(
     file: UploadFile = File(None, description="A PDF file"),
     dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
     ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
+    validate: bool = Query(settings.PDF_TO_PPTX_VALIDATE_FIDELITY, description="Validate visual fidelity and auto-improve problematic pages"),
 ):
-    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr)
+    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr, validate=validate)
+
+
+@router.post(
+    "/convert/pdf-to-pptx/validate",
+    summary="Convert PDF to PPTX with full visual validation report",
+    description="Converts PDF to PPTX, validates visual fidelity with SSIM/pixel comparison, and returns a detailed validation report.",
+    response_class=JSONResponse,
+)
+def pdf_to_pptx_validate(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(None, description="A PDF file"),
+    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
+    ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
+):
+    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr, validate=True, return_report=True)
+
+
+@router.post(
+    "/api/v1/pdf-to-pptx/validate",
+    summary="Convert PDF to PPTX with full visual validation report (v1 API)",
+    description="Alias endpoint for PDF to PPTX conversion with detailed visual fidelity report.",
+    response_class=JSONResponse,
+)
+def pdf_to_pptx_validate_v1(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(None, description="A PDF file"),
+    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
+    ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
+):
+    return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr, validate=True, return_report=True)
