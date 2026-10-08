@@ -32,7 +32,7 @@ async def auto_rotate_endpoint(
         src.write_bytes(data)
         auto_rotate_pdf(src, dst)
         background_tasks.add_task(cleanup_job, job_dir)
-        return FileResponse(dst, media_type="application/pdf", filename="rotated.pdf", background=background_tasks)
+        return FileResponse(dst, media_type="application/pdf", filename="rotated.pdf")
     except (PDFValidationError, UnsupportedPDFError) as exc:
         cleanup_job(job_dir)
         raise HTTPException(400, str(exc)) from exc
