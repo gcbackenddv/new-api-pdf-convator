@@ -71,7 +71,17 @@ def _handle_pdf_to_pptx_conversion(
         pdf_path.unlink(missing_ok=True)
         background_tasks.add_task(shutil.rmtree, work_dir, ignore_errors=True)
         keep = True
-        return FileResponse(result.output_path, media_type=PPTX_MEDIA_TYPE, filename=out_name)
+        headers = {}
+        if hasattr(result, "slide_count"):
+            headers["X-Slide-Count"] = str(result.slide_count)
+        if hasattr(result, "size_bytes"):
+            headers["X-Output-Size"] = str(result.size_bytes)
+        return FileResponse(
+            result.output_path,
+            media_type=PPTX_MEDIA_TYPE,
+            filename=out_name,
+            headers=headers or None,
+        )
     finally:
         if not keep:
             shutil.rmtree(work_dir, ignore_errors=True)
@@ -97,7 +107,7 @@ def _handle_pdf_to_pptx_conversion(
 def pdf_to_pptx(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(None, description="A PDF file"),
-    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=72, le=300, description="Render resolution"),
+    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
     ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
 ):
     return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr)
@@ -118,7 +128,7 @@ def pdf_to_pptx(
 def pdf_to_pptx_v1(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(None, description="A PDF file"),
-    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=72, le=300, description="Render resolution"),
+    dpi: int = Query(settings.PPTX_RENDER_DPI, ge=0, le=600, description="Render resolution (0 or omit for automatic optimal DPI)"),
     ocr: bool = Query(settings.PDF_TO_PPTX_OCR_ENABLED, description="Enable OCR for scanned pages"),
 ):
     return _handle_pdf_to_pptx_conversion(background_tasks, file, dpi, ocr)
