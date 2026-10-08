@@ -43,7 +43,7 @@ def _natural_key(name: str) -> list:
 )
 def heic_to_pdf(
     background_tasks: BackgroundTasks,
-    files: list[UploadFile] = File(None, description="One or more .heic/.heif files"),
+    files: list[UploadFile] = File(..., description="One or more .heic/.heif files"),
     page_size: Literal["auto", "a4", "letter"] = Query(
         "auto", description="auto = page matches the image; a4/letter = image fitted and centered"
     ),
@@ -59,7 +59,7 @@ def heic_to_pdf(
     uploads = [f for f in (files or []) if f.filename]  # browsers may send empty parts
     if not uploads:
         raise HTTPException(400, "No HEIC files were uploaded.")
-    if len(uploads) > settings.MAX_HEIC_FILES:
+    if len(uploads) > settings.HEIC_PDF_MAX_FILES:
         raise HTTPException(413, "Maximum number of HEIC files exceeded.")
 
     entries = []
@@ -97,7 +97,7 @@ def heic_to_pdf(
             result = convert_heic_to_pdf(
                 items, work_dir,
                 dpi=dpi, quality=quality, page_size=page_size,
-                compression=compression, max_pixels=settings.MAX_IMAGE_PIXELS,
+                compression=compression, max_pixels=settings.HEIC_PDF_MAX_PIXELS,
             )
         except HeicToPdfError as exc:
             raise HTTPException(exc.status_code, exc.message)
