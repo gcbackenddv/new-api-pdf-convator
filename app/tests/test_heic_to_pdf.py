@@ -17,12 +17,15 @@ URL = "/convert/heic-to-pdf"
 def make_heic(w=300, h=400, color=(200, 30, 30), mode="RGB", orientation=None) -> bytes:
     img = Image.new(mode, (w, h), color)
     buf = io.BytesIO()
-    kwargs = {}
     if orientation:
+        import pillow_heif
+        heif_file = pillow_heif.from_pillow(img)
         exif = Image.Exif()
         exif[0x0112] = orientation
-        kwargs["exif"] = exif
-    img.save(buf, format="HEIF", quality=90, **kwargs)
+        heif_file.info["exif"] = exif.tobytes()
+        heif_file.save(buf, quality=90)
+    else:
+        img.save(buf, format="HEIF", quality=90)
     return buf.getvalue()
 
 
