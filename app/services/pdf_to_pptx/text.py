@@ -97,12 +97,12 @@ def extract_and_add_text(
                 raw_text = span.get("text", "")
                 font_raw = span.get("font", "")
 
-                # Reject non-text graphical icons or unmapped PUA codes
-                if is_garbage_or_symbol_glyph(raw_text, font_raw):
-                    continue
-
                 cleaned_text = clean_xml_string(raw_text)
                 if not cleaned_text.strip():
+                    continue
+
+                # Reject non-text graphical icons or unmapped PUA codes
+                if is_garbage_or_symbol_glyph(cleaned_text, font_raw):
                     continue
 
                 span_copy = dict(span)

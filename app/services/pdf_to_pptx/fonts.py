@@ -70,10 +70,26 @@ SYMBOL_FONT_KEYWORDS = (
 _INVALID_XML_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]")
 
 
+# Map common PDF Private Use Area (PUA) bullet and icon glyphs to standard Unicode characters
+PUA_TO_UNICODE = {
+    "\uf0b7": "• ",  # Symbol/Wingdings standard bullet point
+    "\uf0a7": "▪ ",  # Small square bullet
+    "\uf0d8": "➢ ",  # Arrow bullet
+    "\uf0fc": "✔ ",  # Check mark
+    "\uf0e0": "✉ ",  # Envelope
+    "\uf020": " ",
+    "\uf0a0": " ",
+}
+
+
 def clean_xml_string(text: str) -> str:
-    """Removes invalid XML 1.0 characters that would corrupt PowerPoint OpenXML files."""
+    """Removes invalid XML 1.0 characters and normalizes PUA bullets."""
     if not text:
         return ""
+    # Map common PUA bullet and icon glyphs to standard Unicode
+    for pua_char, std_char in PUA_TO_UNICODE.items():
+        if pua_char in text:
+            text = text.replace(pua_char, std_char)
     # Remove control characters, replacement chars, and null bytes
     cleaned = _INVALID_XML_CHARS.sub("", text)
     # Replace non-breaking spaces with normal spaces
@@ -93,13 +109,17 @@ def is_garbage_or_symbol_glyph(text: str, font_name: str) -> bool:
     """Detects whether text content is non-text graphical noise or unmapped PUA glyphs.
 
     Never treats graphical symbols, icon font glyphs, or unmapped private-use codes as text.
+    Preserves mapped standard bullets and readable symbols.
     """
     if not text:
         return True
 
-    # If font is an icon/symbol font, characters do not map to standard readable text
+    # Check for mapped bullets or standard symbols
+    has_valid_bullet = any(c in "•▪➢✔✉" for c in text)
+
+    # If font is an icon/symbol font, allow only if mapped to a known bullet
     if is_symbol_or_icon_font(font_name):
-        return True
+        return not has_valid_bullet
 
     # Check for Private Use Area (PUA) characters or unmapped glyphs:
     # U+E000 to U+F8FF, U+F0000 to U+FFFFD, U+100000 to U+10FFFD
