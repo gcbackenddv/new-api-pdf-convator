@@ -34,6 +34,7 @@ class PageDiff(BaseModel):
     text_similarity: float = 0.0
     visual_similarity: float = 0.0
     differences: List[Difference] = Field(default_factory=list)
+    diff_image_data: Optional[str] = None  # Base64 data URI of visual diff thumbnail
 
 
 class Summary(BaseModel):
