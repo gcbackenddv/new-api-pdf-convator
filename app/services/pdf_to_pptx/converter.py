@@ -141,6 +141,8 @@ def convert_pdf_to_pptx(
     native vector shapes, and tables with z-order layering and slide geometry.
     """
     started = time.perf_counter()
+    pdf_path = Path(pdf_path)
+    output_path = Path(output_path)
     _ensure_pdf_header(pdf_path)
 
     try:
