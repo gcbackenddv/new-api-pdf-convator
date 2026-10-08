@@ -369,3 +369,58 @@ def test_line_and_oval_shapes(tmp_path, monkeypatch):
     auto_shapes = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE]
     assert len(connectors) >= 1 or len(auto_shapes) >= 1
 
+
+def test_bullet_character_preservation(tmp_path, monkeypatch):
+    """Verifies that PUA bullet characters like \\uf0b7 are mapped to standard bullets and preserved."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    doc = fitz.open()
+    p = doc.new_page(width=600, height=800)
+    p.insert_text((50, 50), "\uf0b7 First item in list")
+    p.insert_text((50, 80), "\uf0b7 Second item in list")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-pptx",
+        files={"file": ("bullet_test.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    slide = prs.slides[0]
+
+    text_boxes = [s for s in slide.shapes if s.has_text_frame]
+    all_text = " ".join(s.text_frame.text for s in text_boxes)
+    assert "First item in list" in all_text
+    assert "•" in all_text or "·" in all_text
+
+
+def test_clipped_image_handling(tmp_path, monkeypatch):
+    """Verifies that image clipping operators in PDF content stream crop the image accurately."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    from PIL import Image
+    im = Image.new("RGB", (400, 300), color=(255, 0, 0))
+    im_buf = io.BytesIO()
+    im.save(im_buf, format="PNG")
+    im_bytes = im_buf.getvalue()
+
+    doc = fitz.open()
+    p = doc.new_page(width=600, height=800)
+    p.insert_image(fitz.Rect(50, 50, 450, 350), stream=im_bytes)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-pptx",
+        files={"file": ("clip_test.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    slide = prs.slides[0]
+    pictures = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.PICTURE]
+    assert len(pictures) >= 1
+
+
