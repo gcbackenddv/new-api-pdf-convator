@@ -9,7 +9,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 from pptx import Presentation
 
-from app.services.pdf_to_pptx.coordinates import SlideGeometry
+from app.services.pdf_to_pptx.coordinates import SlideGeometry, calculate_optimal_dpi
 from app.services.pdf_to_pptx.images import extract_and_add_images
 from app.services.pdf_to_pptx.ocr import is_scanned_page, perform_ocr_on_page
 from app.services.pdf_to_pptx.shapes import extract_and_add_shapes
@@ -123,7 +123,7 @@ def convert_pdf_to_pptx(
     pdf_path: Path,
     output_path: Path,
     *,
-    dpi: int = 150,
+    dpi: int = 0,
     max_pages: int = 300,
     max_pixels: int = 40_000_000,
     image_format: str = "jpeg",
@@ -139,6 +139,7 @@ def convert_pdf_to_pptx(
 
     Preserves text boxes, fonts, sizes, colors, styles, separate images,
     native vector shapes, and tables with z-order layering and slide geometry.
+    Automatically computes optimal DPI per page for high quality unless explicitly specified.
     """
     started = time.perf_counter()
     pdf_path = Path(pdf_path)
@@ -176,11 +177,12 @@ def convert_pdf_to_pptx(
         base_geom = SlideGeometry.from_page_rect(first_rect)
 
         logger.info(
-            "PDF to Editable PPTX started: pages=%d, dimensions=(%d x %d pt), font=%s",
+            "PDF to Editable PPTX started: pages=%d, dimensions=(%d x %d pt), font=%s, dpi=%s",
             total,
             int(first_rect.width),
             int(first_rect.height),
             default_font,
+            "auto" if dpi <= 0 else dpi,
         )
 
         try:
@@ -205,6 +207,13 @@ def convert_pdf_to_pptx(
             page_geom = SlideGeometry.for_page(rect, base_geom.slide_width, base_geom.slide_height)
             slide = prs.slides.add_slide(blank_layout)
 
+            # Compute optimal high-fidelity DPI for this page
+            page_dpi = calculate_optimal_dpi(
+                page,
+                target_dpi=dpi if dpi > 0 else None,
+                max_pixels=max_pixels,
+            )
+
             # Check if page is genuinely scanned (0 text, 0 drawings, dominated by raster image)
             scanned = is_scanned_page(page)
             if scanned:
@@ -217,17 +226,18 @@ def convert_pdf_to_pptx(
                             page_geom,
                             default_font=default_font,
                             languages=ocr_languages,
+                            dpi=page_dpi,
                         )
                     except Exception as exc:
                         logger.warning("OCR failed on page %d: %s", index + 1, exc)
 
                 if not ocr_success:
-                    logger.info("Page %d is scanned; rendering page image fallback", index + 1)
+                    logger.info("Page %d is scanned; rendering page image fallback at %d DPI", index + 1, page_dpi)
                     _render_page_fallback(
                         page,
                         slide,
                         page_geom,
-                        dpi=dpi,
+                        dpi=page_dpi,
                         max_pixels=max_pixels,
                         image_format=image_format,
                         quality=jpeg_quality,
@@ -246,12 +256,12 @@ def convert_pdf_to_pptx(
                 shapes_count = 0
                 if extract_shapes:
                     shapes_count = extract_and_add_shapes(
-                        page, slide, page_geom, excluded_rects=table_rects, dpi=dpi
+                        page, slide, page_geom, excluded_rects=table_rects, dpi=page_dpi
                     )
 
                 images_count = 0
                 if extract_images:
-                    images_count = extract_and_add_images(doc, page, slide, page_geom, dpi=dpi)
+                    images_count = extract_and_add_images(doc, page, slide, page_geom, dpi=page_dpi)
 
                 text_count = extract_and_add_text(
                     page,
@@ -263,21 +273,22 @@ def convert_pdf_to_pptx(
 
                 # Fallback if no elements were extractable on this page
                 if text_count == 0 and images_count == 0 and shapes_count == 0 and len(table_rects) == 0:
-                    logger.info("Page %d produced no native elements; rendering fallback image", index + 1)
+                    logger.info("Page %d produced no native elements; rendering fallback image at %d DPI", index + 1, page_dpi)
                     _render_page_fallback(
                         page,
                         slide,
                         page_geom,
-                        dpi=dpi,
+                        dpi=page_dpi,
                         max_pixels=max_pixels,
                         image_format=image_format,
                         quality=jpeg_quality,
                     )
                 else:
                     logger.info(
-                        "Slide %d/%d generated: %d text boxes, %d images, %d shapes, %d tables",
+                        "Slide %d/%d generated (DPI=%d): %d text boxes, %d images, %d shapes, %d tables",
                         index + 1,
                         total,
+                        page_dpi,
                         text_count,
                         images_count,
                         shapes_count,
@@ -301,7 +312,7 @@ def convert_pdf_to_pptx(
                     page,
                     slide,
                     page_geom,
-                    dpi=dpi,
+                    dpi=page_dpi,
                     max_pixels=max_pixels,
                     image_format=image_format,
                     quality=jpeg_quality,
