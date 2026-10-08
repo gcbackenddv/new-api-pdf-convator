@@ -125,6 +125,7 @@ class Table:
     ocr_used: bool
     column_edges: tuple[float, ...] = ()
     page_size: tuple[float, float] = (0.0, 0.0)
+    title: str = ""
 
     @property
     def table_id(self) -> str:
@@ -179,6 +180,7 @@ class Table:
     def to_dict(self) -> dict[str, Any]:
         return {
             "table_id": self.table_id,
+            "title": self.title or f"Table {self.number}",
             "page": self.page,
             "pages": list(self.pages),
             "bbox": _round(self.bbox),
