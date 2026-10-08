@@ -4,7 +4,7 @@ import fitz
 from pptx.util import Pt
 
 from app.services.pdf_to_pptx.coordinates import SlideGeometry
-from app.services.pdf_to_pptx.fonts import clean_xml_string
+from app.services.pdf_to_pptx.fonts import clean_xml_string, is_symbol_or_icon_font, normalize_font_name
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,20 @@ def extract_and_add_tables(
                         row_pt = max(5.0, r.bbox[3] - r.bbox[1])
                         ppt_table.rows[r_idx].height = geom.pt_to_emu(row_pt)
 
+            # Detect dominant text font on the page to style table cells consistently
+            table_font = default_font
+            try:
+                page_fonts = page.get_fonts()
+                if page_fonts:
+                    for f_info in page_fonts:
+                        f_name = f_info[3] if len(f_info) > 3 else ""
+                        norm = normalize_font_name(f_name, default_font="")
+                        if norm and not is_symbol_or_icon_font(norm):
+                            table_font = norm
+                            break
+            except Exception:
+                pass
+
             data = t.extract()
             active_data = data[start_r : end_r + 1] if data else []
             for r_idx, row in enumerate(active_data):
@@ -102,7 +116,7 @@ def extract_and_add_tables(
                     cell = ppt_table.cell(r_idx, c_idx)
                     cell.text = text_str
                     for para in cell.text_frame.paragraphs:
-                        para.font.name = default_font
+                        para.font.name = table_font
                         para.font.size = Pt(10)
                         if r_idx == 0:
                             para.font.bold = True
