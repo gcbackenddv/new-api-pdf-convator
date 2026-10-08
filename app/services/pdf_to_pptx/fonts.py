@@ -7,25 +7,28 @@ from pptx.dml.color import RGBColor
 logger = logging.getLogger(__name__)
 
 # Known font mapping families to standard Cross-Platform / Microsoft Office fonts
+# Known font mapping families to standard Cross-Platform / Microsoft Office fonts
 FONT_FAMILY_MAP = {
+    # Standard Serifs
     "times": "Times New Roman",
     "timesnewroman": "Times New Roman",
     "times-roman": "Times New Roman",
     "timesnewromanps": "Times New Roman",
     "liberationserif": "Times New Roman",
+    "dejavuserif": "DejaVu Serif",
+    "georgia": "Georgia",
+    "garamond": "Garamond",
+    "palatino": "Palatino Linotype",
+    "cambria": "Cambria",
+    # Standard Sans-Serifs
     "arial": "Arial",
     "helvetica": "Arial",
-    "liberationsans": "Arial",
+    "liberationsans": "Liberation Sans",
+    "dejavusans": "DejaVu Sans",
     "nimbussans": "Arial",
     "arialmt": "Arial",
     "calibri": "Calibri",
     "aptos": "Aptos",
-    "courier": "Courier New",
-    "couriernew": "Courier New",
-    "liberationmono": "Courier New",
-    "nimbusmono": "Courier New",
-    "consolas": "Consolas",
-    "georgia": "Georgia",
     "verdana": "Verdana",
     "tahoma": "Tahoma",
     "trebuchet": "Trebuchet MS",
@@ -38,6 +41,19 @@ FONT_FAMILY_MAP = {
     "montserrat": "Montserrat",
     "poppins": "Poppins",
     "inter": "Inter",
+    "raleway": "Raleway",
+    "oswald": "Oswald",
+    # Monospaced
+    "courier": "Courier New",
+    "couriernew": "Courier New",
+    "liberationmono": "Courier New",
+    "nimbusmono": "Courier New",
+    "consolas": "Consolas",
+    "sourcecodepro": "Source Code Pro",
+    "firamono": "Fira Mono",
+    "firacode": "Fira Code",
+    "dejavusansmono": "DejaVu Sans Mono",
+    # Indic / Bengali fonts
     "kalpurush": "Kalpurush",
     "solaimanlipi": "SolaimanLipi",
     "bangla": "Kalpurush",
@@ -47,6 +63,11 @@ FONT_FAMILY_MAP = {
     "notosans": "Noto Sans",
     "notoserif": "Noto Serif",
 }
+
+STYLE_SUFFIX_PATTERN = re.compile(
+    r"[-_, ]*(regular|bold|italic|oblique|medium|light|thin|heavy|black|semibold|demibold|book|roman|condensed|narrow|mt|psmt)$",
+    re.IGNORECASE,
+)
 
 # Fonts that represent symbol sets, icons, or glyph bullets rather than standard text
 SYMBOL_FONT_KEYWORDS = (
@@ -142,20 +163,42 @@ def is_garbage_or_symbol_glyph(text: str, font_name: str) -> bool:
     return False
 
 
+def split_camel_case(name: str) -> str:
+    """Splits CamelCase or PascalCase into spaced words (e.g. SourceCodePro -> Source Code Pro)."""
+    s1 = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
+    s2 = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", s1)
+    return s2.strip()
+
+
 def normalize_font_name(pdf_font: str, default_font: str = "Calibri") -> str:
-    """Safely maps PDF embedded font names to available presentation fonts with fallback."""
+    """Safely extracts and preserves exact font family names from PDF fonts.
+
+    Strips subset prefixes ('ABCDEF+Font'), strips style suffixes ('-Bold', '-Regular'),
+    checks standard cross-platform mappings, and preserves exact custom typefaces.
+    """
     if not pdf_font:
         return default_font
 
-    # Remove PDF font subset prefix (e.g. 'ABCDEF+Calibri' -> 'Calibri')
+    # 1. Remove PDF font subset prefix (e.g. 'ABCDEF+Oswald-Regular' -> 'Oswald-Regular')
     cleaned = re.sub(r"^[A-Z]{6}\+", "", pdf_font).strip()
 
-    # Normalize lookup key (lowercase, alphanumeric only)
-    simplified = re.sub(r"[^a-zA-Z]", "", cleaned).lower()
+    # 2. Strip repeated style suffixes from font family (e.g. 'Oswald-Regular' -> 'Oswald')
+    prev = None
+    while prev != cleaned:
+        prev = cleaned
+        cleaned = STYLE_SUFFIX_PATTERN.sub("", cleaned).strip()
 
+    # 3. Check known font family map
+    simplified = re.sub(r"[^a-zA-Z]", "", cleaned).lower()
     for key, mapped_name in FONT_FAMILY_MAP.items():
-        if key in simplified:
+        if key == simplified or (len(key) >= 4 and key in simplified):
             return mapped_name
+
+    # 4. If font is not an icon/symbol font, preserve the exact font family name
+    if cleaned and not is_symbol_or_icon_font(cleaned):
+        has_letters = any(c.isalpha() for c in cleaned)
+        if has_letters:
+            return split_camel_case(cleaned)
 
     return default_font or "Calibri"
 
