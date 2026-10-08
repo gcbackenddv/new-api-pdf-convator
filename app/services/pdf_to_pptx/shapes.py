@@ -65,6 +65,7 @@ def extract_and_add_shapes(
     geom: SlideGeometry,
     excluded_rects: list[fitz.Rect] | None = None,
     dpi: int = 150,
+    fallback_rects: list[fitz.Rect] | None = None,
 ) -> int:
     """Extracts vector drawings cleanly into PowerPoint.
 
@@ -289,6 +290,8 @@ def extract_and_add_shapes(
                 slide.shapes.add_picture(buf, left, top, width, height)
                 buf.close()
                 added_count += 1
+                if fallback_rects is not None:
+                    fallback_rects.append(region)
             except Exception as exc:
                 logger.debug("Failed rendering complex vector fallback image: %s", exc)
 
