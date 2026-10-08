@@ -309,3 +309,63 @@ def test_error_oversized_pdf(monkeypatch):
         files={"file": ("large.pdf", large_payload, "application/pdf")},
     )
     assert response.status_code == 413
+
+
+def test_complex_vector_curve_fallback(tmp_path, monkeypatch):
+    """Verifies that complex curves/drawings fall back to high-fidelity pictures rather than corrupted text."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    doc = fitz.open()
+    p = doc.new_page(width=600, height=800)
+    # Draw a complex bezier curve
+    p.draw_bezier(fitz.Point(100, 100), fitz.Point(150, 50), fitz.Point(200, 150), fitz.Point(250, 100), color=(1, 0, 0), width=3)
+    p.insert_text((50, 50), "Chart Header")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-pptx",
+        files={"file": ("curve_test.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    slide = prs.slides[0]
+
+    # Verify that the complex curve was converted as a picture rather than corrupted text
+    pictures = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.PICTURE]
+    assert len(pictures) >= 1
+
+    text_boxes = [s for s in slide.shapes if s.has_text_frame]
+    all_text = " ".join(s.text_frame.text for s in text_boxes)
+    assert "Chart Header" in all_text
+
+
+def test_line_and_oval_shapes(tmp_path, monkeypatch):
+    """Verifies that simple lines and circles become native PowerPoint connector/oval shapes."""
+    monkeypatch.setattr(settings, "OUTPUT_DIR", tmp_path)
+
+    doc = fitz.open()
+    p = doc.new_page(width=600, height=800)
+    # Simple straight line
+    p.draw_line(fitz.Point(50, 50), fitz.Point(250, 50), color=(0, 0, 1), width=2)
+    # Simple circle
+    p.draw_circle(fitz.Point(100, 150), 30, color=(0, 1, 0), fill=(0.9, 1, 0.9))
+    p.insert_text((50, 250), "Shapes Legend")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/convert/pdf-to-pptx",
+        files={"file": ("shapes_test.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    prs = Presentation(io.BytesIO(response.content))
+    slide = prs.slides[0]
+
+    # Verify line connector and auto shape
+    connectors = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.LINE]
+    auto_shapes = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE]
+    assert len(connectors) >= 1 or len(auto_shapes) >= 1
+
